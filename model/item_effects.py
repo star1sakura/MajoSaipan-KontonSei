@@ -148,21 +148,22 @@ def _effect_life(
 def _calc_point_item_score(state: "GameState", item_actor: "Actor", cfg) -> int:
     """
     计算 Point 道具分数：
-    - 底部得最低分 (point_score_min)
-    - 到达 PoC 线得最高分 (point_score_max)
-    - auto_collect 状态直接满分
+    - POC_COLLECT 状态 -> 满分 (point_score_max)
+    - MAGNET_ATTRACT 状态 -> 按高度计分
+    - NONE 状态 -> 按高度计分
     """
-    from .components import Position, Item
+    from .components import Position, Item, ItemCollectState
 
     pos = item_actor.get(Position)
     item = item_actor.get(Item)
     if not (pos and item):
         return cfg.point_score_min
 
-    # auto_collect 的走 Bomb/PoC → 直接满分
-    if item.auto_collect:
+    # 只有 PoC 吸附才满分
+    if item.collect_state == ItemCollectState.POC_COLLECT:
         return cfg.point_score_max
 
+    # 范围吸附或普通拾取 -> 按高度计分
     h = max(1.0, float(state.height))
     y = pos.y
 

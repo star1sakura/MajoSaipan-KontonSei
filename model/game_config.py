@@ -8,8 +8,14 @@ class CollectConfig:
     道具相关的玩法参数配置
     """
     poc_line_ratio: float = 0.25       # PoC 线高度占画面高度比例
-    pickup_radius: float = 28.0        # 捡道具半径
-    magnet_speed: float = 500.0        # 自动吸道具速度
+    pickup_radius: float = 28.0        # 捡道具判定半径
+
+    # PoC 吸附配置
+    poc_magnet_speed: float = 500.0    # PoC 吸附速度（原 magnet_speed）
+
+    # 范围吸附配置（新增）
+    attract_radius: float = 64.0       # 范围吸附触发半径
+    attract_speed: float = 300.0       # 范围吸附速度
 
     power_step: float = 0.05           # 每个 Power 道具加多少火力
     power_score: int = 100             # 每个 Power 道具额外给多少分

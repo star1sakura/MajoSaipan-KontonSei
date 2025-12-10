@@ -191,11 +191,24 @@ class ItemType(Enum):
     LIFE = auto()
 
 
+class ItemCollectState(Enum):
+    """道具收集状态"""
+    NONE = auto()           # 自由下落
+    MAGNET_ATTRACT = auto() # 范围吸附（按高度计分）
+    POC_COLLECT = auto()    # PoC吸附（满分）
+
+
 @dataclass
 class Item:
+    """道具数据组件"""
     type: ItemType
     value: int = 1
-    auto_collect: bool = False
+    collect_state: ItemCollectState = field(default=ItemCollectState.NONE)
+
+    @property
+    def auto_collect(self) -> bool:
+        """向后兼容属性：任何吸附状态都返回 True"""
+        return self.collect_state != ItemCollectState.NONE
 
 
 # ====== 敌人组件 ======
@@ -419,3 +432,45 @@ class BossHudData:
     spell_bonus_available: bool = True
     timer_seconds: float = 60.0
     visible: bool = True
+
+
+# ====== 子机（Option）组件 ======
+
+@dataclass
+class OptionConfig:
+    """
+    子机配置（角色预设中使用）。
+    定义子机的数量、位置、伤害等参数。
+    使用动态对称位置计算，不再使用固定槽位。
+    """
+    max_options: int = 4                   # 最大子机数量
+    damage_ratio: float = 0.5              # 子机伤害倍率（相对于主机）
+    option_sprite: str = "option"          # 子机精灵名称
+    transition_speed: float = 8.0          # 展开/收拢动画速度
+
+    # 动态对称位置参数
+    base_spread_x: float = 40.0            # 高速模式 X 扩散距离
+    focus_spread_x: float = 15.0           # 低速模式 X 扩散距离
+    base_offset_y: float = -10.0           # 高速模式 Y 偏移
+    focus_offset_y: float = -5.0           # 低速模式 Y 偏移
+    outer_offset_y: float = 10.0           # 外层子机 Y 偏移（4个时）
+
+    # 射击类型（OptionShotKind，延迟导入避免循环）
+    option_shot_kind: object = None
+
+
+@dataclass
+class OptionState:
+    """
+    子机运行时状态（附加到玩家 Actor）。
+    跟踪当前激活的子机数量和位置。
+    """
+    active_count: int = 0                  # 当前激活子机数量（由 Power 决定）
+    # 当前位置列表 [[x, y], ...]，用于平滑动画
+    current_positions: List[List[float]] = field(default_factory=list)
+
+
+@dataclass
+class OptionTag:
+    """子机实体标记（预留，用于独立子机实体）。"""
+    slot_index: int = 0                    # 槽位索引 (0-3)

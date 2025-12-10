@@ -119,6 +119,25 @@ class Assets:
         pygame.draw.rect(beam, (255, 255, 255, 200), (14, 0, 4, 256))
         self.images["bomb_beam"] = beam
 
+        # ====== 子机（Option）精灵 ======
+        # option_reimu - 灵梦子机（红/粉配色，与灵梦风格一致）
+        option_reimu = pygame.Surface((16, 16), pygame.SRCALPHA)
+        pygame.draw.circle(option_reimu, (255, 100, 140), (8, 8), 6)
+        pygame.draw.circle(option_reimu, (255, 180, 200), (8, 6), 3)
+        self.images["option_reimu"] = option_reimu
+
+        # option_marisa - 魔理沙子机（金/黄配色，与魔理沙风格一致）
+        option_marisa = pygame.Surface((16, 16), pygame.SRCALPHA)
+        pygame.draw.circle(option_marisa, (255, 200, 60), (8, 8), 6)
+        pygame.draw.circle(option_marisa, (255, 240, 150), (8, 6), 3)
+        self.images["option_marisa"] = option_marisa
+
+        # option - 默认子机（青色）
+        option_default = pygame.Surface((16, 16), pygame.SRCALPHA)
+        pygame.draw.circle(option_default, (100, 200, 255), (8, 8), 6)
+        pygame.draw.circle(option_default, (180, 230, 255), (8, 6), 3)
+        self.images["option"] = option_default
+
     def get_image(self, name: str) -> pygame.Surface:
         if name in self.images:
             return self.images[name]

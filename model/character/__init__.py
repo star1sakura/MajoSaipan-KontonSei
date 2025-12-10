@@ -13,8 +13,9 @@ from typing import Optional, List
 import copy
 
 from ..registry import Registry
-from ..components import ShotConfig, BombConfigData
+from ..components import ShotConfig, BombConfigData, OptionConfig
 from ..bomb_handlers import BombType
+from ..option_shot_handlers import OptionShotKind
 
 
 class CharacterId(Enum):
@@ -37,6 +38,7 @@ class CharacterPreset:
 
     shot: ShotConfig            # 射击配置
     bomb: BombConfigData        # 炸弹配置
+    option: OptionConfig        # 子机配置
 
     initial_lives: int = 3              # 初始残机
     initial_bombs: int = 3              # 初始炸弹
@@ -103,6 +105,21 @@ def _reimu_a() -> CharacterPreset:
             radius=96.0,
             effect_sprite="bomb_field",
         ),
+        # 子机配置：动态对称分布，平时直射 / Focus追踪
+        option=OptionConfig(
+            max_options=4,
+            damage_ratio=0.5,
+            option_sprite="option_reimu",
+            transition_speed=8.0,
+            # 动态位置参数
+            base_spread_x=40.0,
+            focus_spread_x=15.0,
+            base_offset_y=-20.0,
+            focus_offset_y=-10.0,
+            outer_offset_y=10.0,
+            # 射击类型：平时直射，Focus追踪
+            option_shot_kind=OptionShotKind.REIMU_STYLE,
+        ),
         sprite_name="player_reimu",
         sprite_offset_x=-16,
         sprite_offset_y=-16,
@@ -134,6 +151,21 @@ def _marisa_a() -> CharacterPreset:
             beam_width=64.0,
             beam_length=600.0,
             effect_sprite="bomb_beam",
+        ),
+        # 子机配置：前置型，平时扩散 / Focus直射
+        option=OptionConfig(
+            max_options=4,
+            damage_ratio=0.6,  # 魔理沙火力更高
+            option_sprite="option_marisa",
+            transition_speed=8.0,
+            # 动态位置参数（前置型，Y偏移更大）
+            base_spread_x=30.0,
+            focus_spread_x=10.0,
+            base_offset_y=-20.0,
+            focus_offset_y=-15.0,
+            outer_offset_y=-10.0,
+            # 射击类型：平时扩散，Focus直射
+            option_shot_kind=OptionShotKind.MARISA_STYLE,
         ),
         sprite_name="player_marisa",
         sprite_offset_x=-16,

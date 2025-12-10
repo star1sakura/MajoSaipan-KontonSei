@@ -9,20 +9,22 @@ from ..components import (
     ItemTag,
     BombConfigData,
     InputState,
+    ItemCollectState,
 )
 from ..bomb_handlers import dispatch_bomb, BombType
 
 
 def _bomb_autocollect_items(state: GameState) -> None:
     """
-    将所有道具标记为自动吸取，让 item_autocollect_system 拉取它们。
+    将所有道具标记为 PoC 吸附，让 item_autocollect_system 拉取它们。
+    炸弹收集道具应获得满分。
     """
     for actor in state.actors:
         if not actor.get(ItemTag):
             continue
         item = actor.get(Item)
         if item:
-            item.auto_collect = True
+            item.collect_state = ItemCollectState.POC_COLLECT
 
 
 def bomb_system(

@@ -44,6 +44,8 @@ from .components import (
     ShotConfig,
     BombConfigData,
     InputState,
+    OptionConfig,
+    OptionState,
 )
 from .game_config import (
     CollectConfig,
@@ -244,6 +246,28 @@ def spawn_player(state: GameState, x: float, y: float, character_id: Optional[Ch
 
     # 输入组件
     player.add(InputState())
+
+    # 子机配置和状态
+    if preset:
+        option_cfg = copy.deepcopy(preset.option)
+    else:
+        # 默认子机配置（如果没有角色预设）
+        option_cfg = OptionConfig(
+            max_options=4,
+            damage_ratio=0.5,
+            option_sprite="option",
+            transition_speed=8.0,
+            # 动态位置参数
+            base_spread_x=40.0,
+            focus_spread_x=15.0,
+            base_offset_y=-10.0,
+            focus_offset_y=-5.0,
+            outer_offset_y=10.0,
+            # 默认直射
+            option_shot_kind=None,
+        )
+    player.add(option_cfg)
+    player.add(OptionState(active_count=0, current_positions=[]))
 
     # 渲染提示 / HUD
     player.add(RenderHint())

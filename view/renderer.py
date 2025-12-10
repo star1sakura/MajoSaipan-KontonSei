@@ -4,7 +4,7 @@ import pygame
 
 from model.game_state import GameState
 from model.actor import Actor
-from model.components import Position, SpriteInfo, RenderHint, HudData, PlayerTag, BossHudData
+from model.components import Position, SpriteInfo, RenderHint, HudData, PlayerTag, BossHudData, OptionState, OptionConfig
 from model.game_config import CollectConfig
 
 
@@ -22,6 +22,9 @@ class Renderer:
         # 绘制所有游戏对象
         for actor in state.actors:
             self._draw_actor(actor)
+
+        # 绘制子机（在玩家精灵之上）
+        self._render_options(state)
 
         # PoC 线
         self._draw_poc_line(state)
@@ -122,6 +125,36 @@ class Renderer:
         x = int(pos.x) - int_radius
         y = int(pos.y) - int_radius
         self.screen.blit(overlay, (x, y))
+
+    def _render_options(self, state: GameState) -> None:
+        """绘制玩家子机（Option）。"""
+        player = state.get_player()
+        if not player:
+            return
+
+        option_state = player.get(OptionState)
+        option_cfg = player.get(OptionConfig)
+
+        if not (option_state and option_cfg):
+            return
+
+        # 获取子机精灵（根据角色配置）
+        sprite_name = option_cfg.option_sprite
+        option_img = self.assets.get_image(sprite_name)
+
+        # 精灵偏移（居中绘制）
+        offset_x = -option_img.get_width() // 2
+        offset_y = -option_img.get_height() // 2
+
+        # 绘制每个激活的子机
+        for i in range(option_state.active_count):
+            if i >= len(option_state.current_positions):
+                continue
+
+            pos = option_state.current_positions[i]
+            x = int(pos[0]) + offset_x
+            y = int(pos[1]) + offset_y
+            self.screen.blit(option_img, (x, y))
 
     def _render_boss_hud(self, state: GameState) -> None:
         """渲染 Boss HUD：血条、计时器、符卡名、阶段星星。"""

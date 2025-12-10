@@ -8,6 +8,7 @@ from model.character import CharacterId, get_character_preset
 from model.systems.movement import movement_system
 from model.systems.player_movement import player_move_system
 from model.systems.player_shoot import player_shoot_system
+from model.systems.option_system import option_system
 from model.systems.enemy_shoot import enemy_shoot_system
 from model.systems.collision import collision_detection_system
 from model.systems.collision_damage_system import collision_damage_system
@@ -158,8 +159,9 @@ class GameController:
             key_state = self._poll_input()
             self._write_input_component(key_state)
 
-            # 1. 玩家移动 / 射击 / 敌人射击
+            # 1. 玩家移动 / 子机 / 射击 / 敌人射击
             player_move_system(self.state, dt)
+            option_system(self.state, dt)  # 子机位置更新（在移动后、射击前）
             player_shoot_system(self.state, dt)
             enemy_shoot_system(self.state, dt)
 
