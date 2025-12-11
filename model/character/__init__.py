@@ -13,9 +13,10 @@ from typing import Optional, List
 import copy
 
 from ..registry import Registry
-from ..components import ShotConfig, BombConfigData, OptionConfig
+from ..components import ShotConfig, BombConfigData, OptionConfig, PlayerShotPattern
 from ..bomb_handlers import BombType
 from ..option_shot_handlers import OptionShotKind
+from ..player_shot_patterns import PlayerShotPatternConfig, PlayerShotPatternKind
 
 
 class CharacterId(Enum):
@@ -51,7 +52,8 @@ class CharacterPreset:
     speed_focus: float          # 低速移动速度
     collider_radius: float      # 碰撞体半径
 
-    shot: ShotConfig            # 射击配置
+    # 新版射击配置（参照敌人弹幕模式）
+    shot_pattern: PlayerShotPatternConfig
     bomb: BombConfigData        # 炸弹配置
     option: OptionConfig        # 子机配置
 
@@ -69,7 +71,8 @@ class CharacterPreset:
     sprite_offset_x: int = -16              # 精灵图 X 偏移
     sprite_offset_y: int = -16              # 精灵图 Y 偏移
 
-    # 增强射击��置（擦弹能量系统）
+    # 旧版射击配置（向后兼容，可选）
+    shot: Optional[ShotConfig] = None
     enhanced_shot: Optional[EnhancedShotConfig] = None
 
 
@@ -101,20 +104,27 @@ def get_all_characters() -> List[CharacterPreset]:
 
 @character_registry.register(CharacterId.REIMU_A)
 def _reimu_a() -> CharacterPreset:
-    """博丽灵梦 A 型预设：广角扩散弹 + 圆形炸弹"""
+    """博丽灵梦 A 型预设：直射平行弹 + 圆形炸弹"""
     return CharacterPreset(
         name="博丽灵梦",
-        description="梦想封印风，广角扩散弹 + 圆形炸弹",
+        description="梦想封印风，直射平行弹 + 圆形炸弹",
         speed_normal=220.0,
         speed_focus=120.0,
         collider_radius=3.0,
-        shot=ShotConfig(
+        # 新版射击配置：STRAIGHT 直射模式
+        shot_pattern=PlayerShotPatternConfig(
+            kind=PlayerShotPatternKind.STRAIGHT,
             cooldown=0.08,
             bullet_speed=520.0,
             damage=1,
-            angles_spread=[-20.0, -10.0, 0.0, 10.0, 20.0],
-            angles_focus=[-5.0, 0.0, 5.0],
-            bullet_sprite="player_bullet_basic",
+            # 直射模式使用水平偏移
+            offsets_spread=[-16.0, -8.0, 0.0, 8.0, 16.0],
+            offsets_focus=[-8.0, 0.0, 8.0],
+            # 增强模式
+            enhanced_damage_multiplier=1.5,
+            enhanced_speed_multiplier=1.2,
+            offsets_spread_enhanced=[-24.0, -16.0, -8.0, 0.0, 8.0, 16.0, 24.0],
+            offsets_focus_enhanced=[-10.0, -5.0, 0.0, 5.0, 10.0],
         ),
         bomb=BombConfigData(
             bomb_type=BombType.CIRCLE,
@@ -141,33 +151,32 @@ def _reimu_a() -> CharacterPreset:
         sprite_name="player_reimu",
         sprite_offset_x=-16,
         sprite_offset_y=-16,
-        # 增强射击配置：广角增强
-        enhanced_shot=EnhancedShotConfig(
-            damage_multiplier=1.5,
-            bullet_speed_multiplier=1.2,
-            angles_spread_enhanced=[-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0],  # 7发
-            angles_focus_enhanced=[-6.0, -3.0, 0.0, 3.0, 6.0],                     # 5发
-            option_damage_multiplier=1.5,
-        ),
     )
 
 
 @character_registry.register(CharacterId.MARISA_A)
 def _marisa_a() -> CharacterPreset:
-    """雾雨魔理沙 A 型预设：窄角直射 + 光束炸弹"""
+    """雾雨魔理沙 A 型预设：窄角扩散弹 + 光束炸弹"""
     return CharacterPreset(
         name="雾雨魔理沙",
-        description="恋符高火力，窄角直射 + 光束炸弹",
+        description="恋符高火力，窄角扩散弹 + 光束炸弹",
         speed_normal=240.0,
         speed_focus=130.0,
         collider_radius=3.0,
-        shot=ShotConfig(
+        # 新版射击配置：SPREAD 扩散模式
+        shot_pattern=PlayerShotPatternConfig(
+            kind=PlayerShotPatternKind.SPREAD,
             cooldown=0.07,
             bullet_speed=560.0,
             damage=2,
+            # 扩散模式使用角度
             angles_spread=[-8.0, 0.0, 8.0],
             angles_focus=[-2.0, 0.0, 2.0],
-            bullet_sprite="player_bullet_missile",
+            # 增强模式
+            enhanced_damage_multiplier=2.0,
+            enhanced_speed_multiplier=1.3,
+            angles_spread_enhanced=[-12.0, -6.0, 0.0, 6.0, 12.0],
+            angles_focus_enhanced=[-3.0, -1.5, 0.0, 1.5, 3.0],
         ),
         bomb=BombConfigData(
             bomb_type=BombType.BEAM,
@@ -196,14 +205,6 @@ def _marisa_a() -> CharacterPreset:
         sprite_name="player_marisa",
         sprite_offset_x=-16,
         sprite_offset_y=-16,
-        # 增强射击配置：高火力增强
-        enhanced_shot=EnhancedShotConfig(
-            damage_multiplier=2.0,               # 魔理沙伤害增强更高
-            bullet_speed_multiplier=1.3,
-            angles_spread_enhanced=[-12.0, -6.0, 0.0, 6.0, 12.0],   # 5发窄角
-            angles_focus_enhanced=[-3.0, -1.5, 0.0, 1.5, 3.0],      # 5发超窄
-            option_damage_multiplier=1.8,        # 魔理沙子机增强更高
-        ),
     )
 
 

@@ -120,7 +120,7 @@ class ShotOriginOffset:
 @dataclass
 class ShotConfig:
     """
-    玩家射击配置（组件）。
+    玩家射击配置（组件）- 旧版，保留向后兼容。
     shot_type: 用于从注册表中选择处理函数（延迟绑定）。
     angles_*: 角度；0 表示正上方。
     """
@@ -131,6 +131,17 @@ class ShotConfig:
     angles_spread: List[float] = field(default_factory=lambda: [-10.0, 0.0, 10.0])
     angles_focus: List[float] = field(default_factory=lambda: [-3.0, 0.0, 3.0])
     bullet_sprite: str = "player_bullet_basic"
+
+
+@dataclass
+class PlayerShotPattern:
+    """
+    玩家射击模式组件（新版）。
+    pattern: PlayerShotPatternConfig 配置（延迟导入避免循环）。
+    模式参照敌人弹幕系统 EnemyShootingV2。
+    """
+    pattern: object  # PlayerShotPatternConfig
+    timer: float = 0.0
 
 
 @dataclass
@@ -502,6 +513,10 @@ class OptionConfig:
 
     # 射击类型（OptionShotKind，延迟导入避免循环）
     option_shot_kind: object = None
+
+    # 子机射击参数（独立于主机）
+    base_damage: int = 1                   # 子机基础伤害
+    bullet_speed: float = 520.0            # 子机子弹速度
 
 
 @dataclass

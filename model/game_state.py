@@ -51,6 +51,7 @@ from .components import (
     InputState,
     OptionConfig,
     OptionState,
+    PlayerShotPattern,
 )
 from .game_config import (
     CollectConfig,
@@ -194,10 +195,18 @@ def spawn_player(state: GameState, x: float, y: float, character_id: Optional[Ch
 
     player.add(FocusState(is_focusing=False))
 
-    # 射击配置
-    if preset:
+    # 射击配置：优先使用新版 PlayerShotPattern
+    if preset and hasattr(preset, 'shot_pattern') and preset.shot_pattern:
+        player.add(PlayerShotPattern(pattern=copy.deepcopy(preset.shot_pattern)))
+        player.add(ShotOriginOffset(bullet_spawn_offset_y=preset.bullet_spawn_offset_y))
+    elif preset and preset.shot:
+        # 向后兼容：使用旧版 ShotConfig
         shot_cfg = copy.deepcopy(preset.shot)
+        player.add(shot_cfg)
+        player.add(Shooting(cooldown=shot_cfg.cooldown))
+        player.add(ShotOriginOffset(bullet_spawn_offset_y=preset.bullet_spawn_offset_y))
     else:
+        # 默认配置
         shot_cfg = ShotConfig(
             shot_type=ShotKind.SPREAD,
             cooldown=DEFAULT_SHOOT_COOLDOWN,
@@ -207,11 +216,10 @@ def spawn_player(state: GameState, x: float, y: float, character_id: Optional[Ch
             angles_focus=[-5.0, 0.0, 5.0],
             bullet_sprite="player_bullet_basic",
         )
-    player.add(shot_cfg)
-    player.add(Shooting(cooldown=shot_cfg.cooldown))
-
-    spawn_offset_y = preset.bullet_spawn_offset_y if preset else (cfg.bullet_spawn_offset_y if cfg else 16.0)
-    player.add(ShotOriginOffset(bullet_spawn_offset_y=spawn_offset_y))
+        player.add(shot_cfg)
+        player.add(Shooting(cooldown=shot_cfg.cooldown))
+        spawn_offset_y = cfg.bullet_spawn_offset_y if cfg else 16.0
+        player.add(ShotOriginOffset(bullet_spawn_offset_y=spawn_offset_y))
 
     # 炸弹配置
     if preset:
@@ -316,6 +324,34 @@ def spawn_player_bullet(
 
     bullet.add(PlayerBulletTag())
     bullet.add(PlayerBulletKindTag(kind=bullet_kind))  # View 层根据此查表渲染
+    bullet.add(Bullet(damage=damage))
+
+    bullet.add(Collider(radius=collider_radius, layer=CollisionLayer.PLAYER_BULLET, mask=CollisionLayer.ENEMY))
+
+    bullet.add(Lifetime(time_left=lifetime))
+
+    state.add_actor(bullet)
+    return bullet
+
+
+def spawn_player_bullet_with_velocity(
+    state: GameState,
+    x: float,
+    y: float,
+    velocity: Vector2,
+    damage: int = 1,
+    bullet_kind: PlayerBulletKind = PlayerBulletKind.MAIN_NORMAL,
+    collider_radius: float = 4.0,
+    lifetime: float = 2.0,
+) -> Actor:
+    """使用速度向量生成玩家子弹（新版 PlayerShotPattern 使用）"""
+    bullet = Actor()
+
+    bullet.add(Position(x, y))
+    bullet.add(Velocity(velocity))
+
+    bullet.add(PlayerBulletTag())
+    bullet.add(PlayerBulletKindTag(kind=bullet_kind))
     bullet.add(Bullet(damage=damage))
 
     bullet.add(Collider(radius=collider_radius, layer=CollisionLayer.PLAYER_BULLET, mask=CollisionLayer.ENEMY))

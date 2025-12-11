@@ -81,13 +81,21 @@ def _shot_straight(
     from .game_state import spawn_player_bullet
 
     bullet_kind = PlayerBulletKind.OPTION_ENHANCED if is_enhanced else PlayerBulletKind.OPTION_NORMAL
-    damage = max(1, int(shot_cfg.damage * option_cfg.damage_ratio))
+
+    # 优先使用 shot_cfg，否则使用 OptionConfig 自己的参数
+    if shot_cfg is not None:
+        damage = max(1, int(shot_cfg.damage * option_cfg.damage_ratio))
+        speed = shot_cfg.bullet_speed
+    else:
+        damage = max(1, int(option_cfg.base_damage * option_cfg.damage_ratio))
+        speed = option_cfg.bullet_speed
+
     spawn_player_bullet(
         state,
         x=option_pos[0],
         y=option_pos[1],
         damage=damage,
-        speed=shot_cfg.bullet_speed,
+        speed=speed,
         angle_deg=0.0,
         bullet_kind=bullet_kind,
     )
@@ -108,7 +116,14 @@ def _shot_homing(
     from .components import Position, EnemyTag
 
     bullet_kind = PlayerBulletKind.OPTION_ENHANCED if is_enhanced else PlayerBulletKind.OPTION_NORMAL
-    damage = max(1, int(shot_cfg.damage * option_cfg.damage_ratio))
+
+    # 优先使用 shot_cfg，否则使用 OptionConfig 自己的参数
+    if shot_cfg is not None:
+        damage = max(1, int(shot_cfg.damage * option_cfg.damage_ratio))
+        speed = shot_cfg.bullet_speed
+    else:
+        damage = max(1, int(option_cfg.base_damage * option_cfg.damage_ratio))
+        speed = option_cfg.bullet_speed
 
     # 查找最近的敌人
     nearest_enemy = None
@@ -141,7 +156,7 @@ def _shot_homing(
         x=option_pos[0],
         y=option_pos[1],
         damage=damage,
-        speed=shot_cfg.bullet_speed * 0.9,  # 追踪弹稍慢
+        speed=speed * 0.9,  # 追踪弹稍慢
         angle_deg=angle,
         bullet_kind=bullet_kind,
     )
@@ -161,8 +176,15 @@ def _shot_spread(
     from .game_state import spawn_player_bullet
 
     bullet_kind = PlayerBulletKind.OPTION_ENHANCED if is_enhanced else PlayerBulletKind.OPTION_NORMAL
-    # 扩散伤害稍低（多发）
-    damage = max(1, int(shot_cfg.damage * option_cfg.damage_ratio * 0.6))
+
+    # 优先使用 shot_cfg，否则使用 OptionConfig 自己的参数
+    if shot_cfg is not None:
+        damage = max(1, int(shot_cfg.damage * option_cfg.damage_ratio * 0.6))
+        speed = shot_cfg.bullet_speed
+    else:
+        damage = max(1, int(option_cfg.base_damage * option_cfg.damage_ratio * 0.6))
+        speed = option_cfg.bullet_speed
+
     angles = [-15.0, 0.0, 15.0]
 
     for angle in angles:
@@ -171,7 +193,7 @@ def _shot_spread(
             x=option_pos[0],
             y=option_pos[1],
             damage=damage,
-            speed=shot_cfg.bullet_speed,
+            speed=speed,
             angle_deg=angle,
             bullet_kind=bullet_kind,
         )
