@@ -27,6 +27,7 @@ class PendingShotData:
         velocity: 速度向量
         damage: 伤害值
         bullet_kind: 子弹类型
+        motion_phases: 运动阶段序列（可选），用于子弹运动状态机
     """
     delay: float
     offset_x: float  # 相对偏移，不是绝对坐标
@@ -34,6 +35,7 @@ class PendingShotData:
     velocity: Vector2
     damage: int = 1
     bullet_kind: EnemyBulletKind = EnemyBulletKind.BASIC
+    motion_phases: List[object] | None = None  # List[LinearPhase | WaypointPhase | HoverPhase]
 
 
 @dataclass

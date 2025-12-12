@@ -37,6 +37,7 @@ from .boundary_system import boundary_system
 from .render_hint_system import render_hint_system
 from .hud_data_system import hud_data_system
 from .stats_system import stats_system
+from .bullet_motion_system import bullet_motion_system
 
 __all__ = [
     "movement_system",
@@ -60,4 +61,5 @@ __all__ = [
     "render_hint_system",
     "hud_data_system",
     "stats_system",
+    "bullet_motion_system",
 ]

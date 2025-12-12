@@ -25,10 +25,12 @@ class ShotData:
         velocity: 速度向量
         offset: 相对发射点的位置偏移，默认 (0, 0)
         delay: 延迟发射秒数，默认 0（立即发射）
+        motion_phases: 运动阶段序列（可选），用于子弹运动状态机
     """
     velocity: Vector2
     offset: Vector2 = field(default_factory=lambda: Vector2(0, 0))
     delay: float = 0.0
+    motion_phases: List[object] | None = None  # List[LinearPhase | WaypointPhase | HoverPhase]
 
 if TYPE_CHECKING:
     from .game_state import GameState

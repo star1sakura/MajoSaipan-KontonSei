@@ -65,8 +65,8 @@ def enemy_shoot_system(state: GameState, dt: float) -> None:
             spawn_x = pos.x + shot.offset.x
             spawn_y = pos.y + shot.offset.y
 
-            if shot.delay <= 0:
-                # 立即发射
+            if shot.delay <= 0 and not shot.motion_phases:
+                # 立即发射（无运动阶段）
                 spawn_enemy_bullet(
                     state,
                     x=spawn_x,
@@ -74,6 +74,17 @@ def enemy_shoot_system(state: GameState, dt: float) -> None:
                     velocity=shot.velocity,
                     damage=damage,
                 )
+            elif shot.delay <= 0 and shot.motion_phases:
+                # 立即发射但有运动阶段，需要附加 BulletMotion 组件
+                from ..components import BulletMotion
+                bullet = spawn_enemy_bullet(
+                    state,
+                    x=spawn_x,
+                    y=spawn_y,
+                    velocity=shot.velocity,
+                    damage=damage,
+                )
+                bullet.add(BulletMotion(phases=list(shot.motion_phases)))
             else:
                 # 加入延迟队列
                 queue = actor.get(DelayedBulletQueue)
@@ -87,6 +98,7 @@ def enemy_shoot_system(state: GameState, dt: float) -> None:
                     offset_y=shot.offset.y,
                     velocity=shot.velocity,
                     damage=damage,
+                    motion_phases=shot.motion_phases,
                 ))
 
 

@@ -33,6 +33,7 @@ from model.systems.death_effect import player_respawn_visual_system
 from model.systems.boss_phase_system import boss_phase_system
 from model.systems.boss_movement_system import boss_movement_system
 from model.systems.boss_hud_system import boss_hud_system
+from model.systems.bullet_motion_system import bullet_motion_system
 from model.stages.stage1 import setup_stage1
 from model.enemies import spawn_fairy_small, spawn_fairy_large, spawn_midboss
 
@@ -180,6 +181,9 @@ class GameController:
 
             # 2. 所有物体移动
             movement_system(self.state, dt)
+
+            # 2.1 子弹运动状态机：处理 BulletMotion 组件的阶段切换
+            bullet_motion_system(self.state, dt)
 
             # 2.5 边界处理：玩家限制在屏幕内，子弹出界清理
             boundary_system(self.state)

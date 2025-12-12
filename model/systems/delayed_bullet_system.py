@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from ..game_state import GameState, spawn_enemy_bullet
 from ..delayed_bullet import DelayedBulletQueue
-from ..components import Position
+from ..components import Position, BulletMotion
 
 
 def delayed_bullet_system(state: GameState, dt: float) -> None:
@@ -18,6 +18,7 @@ def delayed_bullet_system(state: GameState, dt: float) -> None:
     遍历所有带有 DelayedBulletQueue 组件的 Actor，
     递减每个待发射子弹的延迟时间，
     延迟归零时从 Actor 当前位置发射子弹（跟随移动）。
+    如果 PendingShotData 包含 motion_phases，则附加 BulletMotion 组件。
     """
     for actor in state.actors:
         queue = actor.get(DelayedBulletQueue)
@@ -36,7 +37,7 @@ def delayed_bullet_system(state: GameState, dt: float) -> None:
             shot.delay -= dt
             if shot.delay <= 0:
                 # 延迟归零，从敌人当前位置 + 偏移生成子弹
-                spawn_enemy_bullet(
+                bullet = spawn_enemy_bullet(
                     state,
                     x=pos.x + shot.offset_x,
                     y=pos.y + shot.offset_y,
@@ -44,6 +45,9 @@ def delayed_bullet_system(state: GameState, dt: float) -> None:
                     damage=shot.damage,
                     bullet_kind=shot.bullet_kind,
                 )
+                # 如果有运动阶段，附加 BulletMotion 组件
+                if shot.motion_phases:
+                    bullet.add(BulletMotion(phases=list(shot.motion_phases)))
             else:
                 # 还未到时间，保留在队列中
                 still_pending.append(shot)

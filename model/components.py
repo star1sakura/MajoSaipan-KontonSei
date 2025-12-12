@@ -510,3 +510,49 @@ class OptionState:
 class OptionTag:
     """子机实体标记（预留，用于独立子机实体）。"""
     slot_index: int = 0                    # 槽位索引 (0-3)
+
+
+# ====== 子弹运动状态机组件 ======
+
+class MotionPhaseKind(Enum):
+    """运动阶段类型"""
+    LINEAR = auto()      # 直线运动
+    WAYPOINT = auto()    # 路径点运动
+    HOVER = auto()       # 悬停
+
+
+@dataclass
+class LinearPhase:
+    """直线运动阶段"""
+    kind: MotionPhaseKind = field(default=MotionPhaseKind.LINEAR, repr=False)
+    direction_x: float = 0.0
+    direction_y: float = 1.0
+    speed: float = 150.0
+
+
+@dataclass
+class WaypointPhase:
+    """路径点运动阶段"""
+    kind: MotionPhaseKind = field(default=MotionPhaseKind.WAYPOINT, repr=False)
+    waypoints: List[tuple] = field(default_factory=list)  # [(x, y), ...]
+    speed: float = 150.0
+    arrival_threshold: float = 8.0
+    current_index: int = 0  # 运行时状态
+
+
+@dataclass
+class HoverPhase:
+    """悬停阶段"""
+    kind: MotionPhaseKind = field(default=MotionPhaseKind.HOVER, repr=False)
+    duration: float = 0.5  # 悬停时长
+
+
+@dataclass
+class BulletMotion:
+    """
+    子弹运动状态机组件。
+    存储运动阶段序列，子弹按序列执行各阶段运动。
+    """
+    phases: List[object] = field(default_factory=list)  # List[LinearPhase | WaypointPhase | HoverPhase]
+    current_phase: int = 0
+    phase_timer: float = 0.0  # 用于 HoverPhase 等有时限的阶段
