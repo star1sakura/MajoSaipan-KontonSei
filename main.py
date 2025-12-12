@@ -49,12 +49,18 @@ def main():
 
     pygame.init()
 
-    screen_width = 480
-    screen_height = 640
-    screen = pygame.display.set_mode((screen_width, screen_height))
+    display_width = 720
+    display_height = 640
+    screen = pygame.display.set_mode((display_width, display_height))
     pygame.display.set_caption("Touhou-like STG")
 
-    controller = GameController(screen_width, screen_height, screen, character_id=character_id)
+    controller = GameController(
+        screen_width=display_width,
+        screen_height=display_height,
+        screen=screen,
+        character_id=character_id,
+        game_width=480
+    )
     controller.run()
 
 

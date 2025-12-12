@@ -22,12 +22,12 @@ PLAYER_BULLET_SPRITES: dict[PlayerBulletKind, tuple[str, int, int]] = {
     
     # Normal Bullets (Shared) - Size 20x40 -> Center (-10, -20)
     PlayerBulletKind.MAIN_NORMAL: ("player_bullet_normal", -10, -20),
-    # Enhanced Bullets (Shared) - Size 48x96 -> Center (-24, -48)
-    PlayerBulletKind.MAIN_ENHANCED: ("player_bullet_enhanced", -24, -48),
+    # Enhanced Bullets (Shared) - Size 64x128 -> Center (-32, -64)
+    PlayerBulletKind.MAIN_ENHANCED: ("player_bullet_enhanced", -32, -64),
     
     # Option Bullets (Alias to Normal/Enhanced)
     PlayerBulletKind.OPTION_NORMAL: ("player_bullet_option", -10, -20),
-    PlayerBulletKind.OPTION_ENHANCED: ("player_bullet_option_enhanced", -24, -48),
+    PlayerBulletKind.OPTION_ENHANCED: ("player_bullet_option_enhanced", -32, -64),
     
     # Option Tracking Bullet (Unique) - Size 20x32 -> Center (-10, -16)
     PlayerBulletKind.OPTION_TRACKING: ("player_bullet_option_tracking", -10, -16),
@@ -61,13 +61,51 @@ class Renderer:
     def __init__(self, screen: pygame.Surface, assets) -> None:
         self.screen = screen
         self.assets = assets
-        self.font_small = pygame.font.Font(None, 18)
+        self.font_small = pygame.font.Font(None, 24)
+        try:
+            if hasattr(assets, 'font_path'):
+                self.font_small = pygame.font.Font(assets.font_path, 24)
+        except (FileNotFoundError, pygame.error):
+            print("Warning: Custom font not found. Using default.")
+            self.font_small = pygame.font.Font(None, 24)
         
         # 动画状态缓存：{ id(actor): {"state": str, "frame_index": int, "timer": float} }
         self.anim_cache = {}
 
     def render(self, state: GameState) -> None:
-        self.screen.fill((0, 0, 0))
+        GAME_WIDTH = 480
+        SIDEBAR_WIDTH = 240
+        SCREEN_HEIGHT = state.height
+
+        # 1. 清空全屏 / 绘制侧边栏背景
+        # 整体清空
+        self.screen.fill((20, 20, 20))
+        
+        # 侧边栏背景（右侧）
+        sidebar_bg = self.assets.get_image("ui_sidebar_bg")
+        if sidebar_bg:
+            self.screen.blit(sidebar_bg, (GAME_WIDTH, 0))
+        
+        # 分割线
+        pygame.draw.line(self.screen, (255, 255, 255), (GAME_WIDTH, 0), (GAME_WIDTH, SCREEN_HEIGHT), 2)
+
+        # 2. 设定游戏区域 Clipping
+        # 所有的游戏内物体渲染只允许在左侧 480 像素内显示
+        game_rect = pygame.Rect(0, 0, GAME_WIDTH, SCREEN_HEIGHT)
+        self.screen.set_clip(game_rect)
+
+        # 3. 绘制游戏背景（在 Clip 区域内）
+        bg = self.assets.get_image("background")
+        if bg:
+            scroll_speed = 60.0  # 像素/秒
+            # 计算偏移量 (0 到 height)
+            offset_y = (state.time * scroll_speed) % state.height 
+            
+            # 绘制两张图以实现循环
+            self.screen.blit(bg, (0, offset_y))
+            self.screen.blit(bg, (0, offset_y - state.height))
+        else:
+            self.screen.fill((0, 0, 0))
         
         # 简单的垃圾回收：移除不在当前 state.actors 中的 actor 缓存
         current_actor_ids = {id(a) for a in state.actors}
@@ -85,10 +123,13 @@ class Renderer:
         # PoC 线
         self._draw_poc_line(state)
 
-        # Boss HUD
+        # Boss HUD (保留在游戏区域内)
         self._render_boss_hud(state)
 
-        # 玩家 HUD
+        # 4. 解除 Clip，绘制侧边栏 UI
+        self.screen.set_clip(None)
+
+        # 玩家 HUD (移至侧边栏)
         self._render_hud(state)
 
         pygame.display.flip()
@@ -286,19 +327,72 @@ class Renderer:
             f"EB {s.enemy_bullets:3d}  PB {s.player_bullets:3d}  IT {s.items:3d}"
         )
 
-        x, y, line_h = 10, 10, 20
-        for text in lines:
-            surf = self.font_small.render(text, True, (255, 255, 255))
-            self.screen.blit(surf, (x, y))
+        # 侧边栏起始 X
+        x = state.width + 20
+        y = 30
+        line_h = 32
+        
+        def draw_text_outline(text, color, cur_y):
+            """绘制带描边的文字"""
+            outline_color = (0, 0, 0)
+            # 简单描边：8方向
+            offsets = [(-1, -1), (1, -1), (-1, 1), (1, 1), (0, -1), (0, 1), (-1, 0), (1, 0)]
+            for ox, oy in offsets:
+                surf = self.font_small.render(text, True, outline_color)
+                self.screen.blit(surf, (x + ox, cur_y + oy))
+            
+            # 主体
+            surf = self.font_small.render(text, True, color)
+            self.screen.blit(surf, (x, cur_y))
+
+        # 1. 标题
+        draw_text_outline("=== STATUS ===", (200, 200, 255), y)
+        y += 40
+
+        # 2. 分数 (黄色)
+        draw_text_outline(f"SCORE  {hud.score:09d}", (255, 220, 0), y)
+        y += line_h
+
+        # 3. 生命值 (红粉)
+        draw_text_outline("LIVES", (255, 100, 150), y)
+        y += 24
+        
+        icon_active = self.assets.get_image("icon_life_active")
+        icon_empty = self.assets.get_image("icon_life_empty")
+        
+        icon_x = x
+        for i in range(hud.max_lives):
+            if i < hud.lives:
+                self.screen.blit(icon_active, (icon_x, y))
+            else:
+                self.screen.blit(icon_empty, (icon_x, y))
+            icon_x += 36 # 间距
+        
+        y += 40
+
+        # 4. 其他属性 (BOMB:绿, POWER:橙, GRAZE:蓝)
+        items = [
+            (f"BOMBS  {hud.bombs}/{hud.max_bombs}", (100, 255, 100)),
+            (f"POWER  {hud.power:.2f}/{hud.max_power:.2f}", (255, 160, 60)),
+            (f"GRAZE  {hud.graze_count}", (100, 200, 255)),
+        ]
+
+        for text, color in items:
+            draw_text_outline(text, color, y)
             y += line_h
+
+        # 调试统计
+        s = state.entity_stats
+        debug_surf = self.font_small.render(f"E:{s.enemies} EB:{s.enemy_bullets}", True, (100, 100, 100))
+        self.screen.blit(debug_surf, (x, y + 20))
 
         # 绘制擦弹能量条
         self._render_graze_energy_bar(state, hud, y)
 
     def _render_graze_energy_bar(self, state: GameState, hud: HudData, start_y: int) -> None:
         """绘制擦弹能量条。"""
-        bar_x = 10
-        bar_y = start_y + 5
+        bar_x = state.width + 20
+        bar_y = start_y + 10
         bar_width = 120
         bar_height = 10
 
@@ -390,19 +484,20 @@ class Renderer:
         sprite_name = option_cfg.option_sprite
         option_img = self.assets.get_image(sprite_name)
 
-        # 精灵偏移（居中绘制）
-        offset_x = -option_img.get_width() // 2
-        offset_y = -option_img.get_height() // 2
-
         # 绘制每个激活的子机
+        rotation_speed = -180.0  # 度/秒
+        angle = (state.time * rotation_speed) % 360
+        rotated_img = pygame.transform.rotate(option_img, angle)
+        
         for i in range(option_state.active_count):
             if i >= len(option_state.current_positions):
                 continue
 
             pos = option_state.current_positions[i]
-            x = int(pos[0]) + offset_x
-            y = int(pos[1]) + offset_y
-            self.screen.blit(option_img, (x, y))
+            # 使用中心绘制，因为旋转会改变图像尺寸
+            # rect.center = (pos[0], pos[1])
+            rect = rotated_img.get_rect(center=(int(pos[0]), int(pos[1])))
+            self.screen.blit(rotated_img, rect)
 
     def _render_boss_hud(self, state: GameState) -> None:
         """渲染 Boss HUD：血条、计时器、符卡名、阶段星星。"""
@@ -417,7 +512,7 @@ class Renderer:
         if not boss_hud:
             return
 
-        screen_w = self.screen.get_width()
+        screen_w = state.width
 
         # ====== 血条（顶部中央） ======
         bar_width = 280

@@ -10,6 +10,7 @@ class Assets:
 
     def __init__(self) -> None:
         self.images: dict[str, pygame.Surface] = {}
+        self.font_path = "assets/fonts/PixelifySans-Black.ttf"
 
     def load(self) -> None:
         # Load Character Sprite Sheet
@@ -25,8 +26,8 @@ class Assets:
             cell_height = 1536 // 3
             
             # Scale down to reasonable game size
-            # height 512 -> 64 (1/8 scale) looks good for a 480x640 screen
-            target_height = 64
+            # height 512 -> 80 (approx 1/6.4) - Middle ground size
+            target_height = 80
             scale_ratio = target_height / cell_height
             target_width = int(cell_width * scale_ratio)
 
@@ -144,13 +145,59 @@ class Assets:
             # assets/sprites/bullets/bullet_enhanced.png
             be_src = pygame.image.load("assets/sprites/bullets/bullet_enhanced.png").convert_alpha()
             be_rot = pygame.transform.rotate(be_src, 90)
-            # Increase size to 48x96 (1.5x)
-            be = pygame.transform.smoothscale(be_rot, (48, 96))
+            # Increase size to 64x128
+            be = pygame.transform.smoothscale(be_rot, (64, 128))
             self.images["player_bullet_enhanced"] = be
         except (FileNotFoundError, pygame.error):
-            be = pygame.Surface((48, 96), pygame.SRCALPHA)
-            pygame.draw.rect(be, (255, 200, 50), (12, 0, 24, 96))
+            be = pygame.Surface((64, 128), pygame.SRCALPHA)
+            pygame.draw.rect(be, (255, 200, 50), (16, 0, 32, 128))
             self.images["player_bullet_enhanced"] = be
+
+        # ====== Background ======
+        try:
+            bg_src = pygame.image.load("assets/sprites/backgrounds/background.png").convert_alpha()
+            # Scale to screen size 480x640
+            bg = pygame.transform.smoothscale(bg_src, (480, 640))
+            self.images["background"] = bg
+        except (FileNotFoundError, pygame.error):
+            # Fallback: Dark blue gradient or simple rect
+            bg = pygame.Surface((480, 640))
+            bg.fill((20, 20, 50))
+            self.images["background"] = bg
+
+        # ====== Sidebar Background ======
+        try:
+            sb_src = pygame.image.load("assets/ui/sidebar_bg.png").convert_alpha()
+            # Scale to 240x640
+            sb = pygame.transform.smoothscale(sb_src, (240, 640))
+            self.images["ui_sidebar_bg"] = sb
+        except (FileNotFoundError, pygame.error):
+            sb_surf = pygame.Surface((240, 640))
+            sb_surf.fill((40, 40, 60))
+            # Optional: Pattern
+            pygame.draw.rect(sb_surf, (30, 30, 50), (10, 10, 220, 620), 2)
+            self.images["ui_sidebar_bg"] = sb_surf
+
+        # ====== UI Icons ======
+        try:
+            # Life Active
+            life_act = pygame.image.load("assets/ui/icon_life_active.png").convert_alpha()
+            life_act = pygame.transform.smoothscale(life_act, (32, 32))
+            self.images["icon_life_active"] = life_act
+
+            # Life Empty
+            life_emp = pygame.image.load("assets/ui/icon_life_empty.png").convert_alpha()
+            life_emp = pygame.transform.smoothscale(life_emp, (32, 32))
+            self.images["icon_life_empty"] = life_emp
+        except (FileNotFoundError, pygame.error):
+            # Fallback
+            la = pygame.Surface((24, 24), pygame.SRCALPHA)
+            pygame.draw.circle(la, (255, 100, 200), (12, 12), 10)
+            self.images["icon_life_active"] = la
+            
+            le = pygame.Surface((24, 24), pygame.SRCALPHA)
+            pygame.draw.circle(le, (100, 100, 100), (12, 12), 10)
+            self.images["icon_life_empty"] = le
 
         # 3. Option Tracking Bullet (Unique)
         try:
@@ -213,23 +260,24 @@ class Assets:
         self.images["bomb_beam"] = beam
 
         # ====== 子机（Option）精灵 ======
-        # option_reimu - 灵梦子机（红/粉配色，与灵梦风格一致）
-        option_reimu = pygame.Surface((16, 16), pygame.SRCALPHA)
-        pygame.draw.circle(option_reimu, (255, 100, 140), (8, 8), 6)
-        pygame.draw.circle(option_reimu, (255, 180, 200), (8, 6), 3)
-        self.images["option_reimu"] = option_reimu
-
-        # option_marisa - 魔理沙子机（金/黄配色，与魔理沙风格一致）
-        option_marisa = pygame.Surface((16, 16), pygame.SRCALPHA)
-        pygame.draw.circle(option_marisa, (255, 200, 60), (8, 8), 6)
-        pygame.draw.circle(option_marisa, (255, 240, 150), (8, 6), 3)
-        self.images["option_marisa"] = option_marisa
-
-        # option - 默认子机（青色）
-        option_default = pygame.Surface((16, 16), pygame.SRCALPHA)
-        pygame.draw.circle(option_default, (100, 200, 255), (8, 8), 6)
-        pygame.draw.circle(option_default, (180, 230, 255), (8, 6), 3)
-        self.images["option"] = option_default
+        try:
+            # Load option.png from user folder
+            opt_src = pygame.image.load("assets/sprites/options/option.png").convert_alpha()
+            # Scale to 24x24 (smaller)
+            opt_img = pygame.transform.smoothscale(opt_src, (24, 24))
+            
+            self.images["option"] = opt_img
+            self.images["option_reimu"] = opt_img
+            self.images["option_marisa"] = opt_img
+        except (FileNotFoundError, pygame.error):
+            # Fallback: Default placeholder (Cyan)
+            option_default = pygame.Surface((24, 24), pygame.SRCALPHA)
+            pygame.draw.circle(option_default, (100, 200, 255), (12, 12), 10)
+            pygame.draw.circle(option_default, (180, 230, 255), (12, 9), 5)
+            
+            self.images["option"] = option_default
+            self.images["option_reimu"] = option_default
+            self.images["option_marisa"] = option_default
 
     def get_image(self, name: str) -> pygame.Surface:
         if name in self.images:

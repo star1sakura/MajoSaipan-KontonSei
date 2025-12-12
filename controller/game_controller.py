@@ -49,9 +49,11 @@ class GameController:
         screen_height: int,
         screen: pygame.Surface,
         character_id: CharacterId | None = None,
+        game_width: int | None = None,
     ) -> None:
         self.screen_width = screen_width
         self.screen_height = screen_height
+        self.game_width = game_width if game_width is not None else screen_width
         self.screen = screen
         self.character_id = character_id
 
@@ -62,7 +64,7 @@ class GameController:
         self.assets.load()
 
         self.state = GameState(
-            width=screen_width,
+            width=self.game_width,
             height=screen_height,
         )
 
@@ -79,7 +81,7 @@ class GameController:
 
         spawn_player(
             self.state,
-            x=screen_width / 2,
+            x=self.game_width / 2,
             y=spawn_y,
             character_id=character_id,
         )
@@ -90,13 +92,13 @@ class GameController:
         # 生成一些测试用掉落物
         spawn_item(
             self.state,
-            x=screen_width / 2 - 40,
+            x=self.game_width / 2 - 40,
             y=screen_height / 2,
             item_type=ItemType.POWER,
         )
         spawn_item(
             self.state,
-            x=screen_width / 2 + 40,
+            x=self.game_width / 2 + 40,
             y=screen_height / 2,
             item_type=ItemType.POINT,
         )

@@ -101,9 +101,9 @@ def _reimu_a() -> CharacterPreset:
             offsets_spread=[-12.0, -4.0, 4.0, 12.0],  # 4发模式
             offsets_focus=[-4.0, 4.0],                # 2发模式
             # 增强模式
-            enhanced_cooldown_multiplier=1.2,  # 射速加快 (间隔x1.5，产生重叠)
+            enhanced_cooldown_multiplier=1.2,  # 射速加快 (间隔x1.2，产生重叠)
             enhanced_damage_multiplier=3,
-            enhanced_speed_multiplier=2,
+            enhanced_speed_multiplier=2.5,
             # 改为单发大子弹
             offsets_spread_enhanced=[0.0],
             offsets_focus_enhanced=[0.0],
@@ -131,8 +131,8 @@ def _reimu_a() -> CharacterPreset:
             option_shot_kind=OptionShotKind.REIMU_STYLE,
         ),
         sprite_name="player_reimu",
-        sprite_offset_x=-21,
-        sprite_offset_y=-32,
+        sprite_offset_x=-27,
+        sprite_offset_y=-40,
     )
 
 
@@ -185,8 +185,8 @@ def _marisa_a() -> CharacterPreset:
             option_shot_kind=OptionShotKind.MARISA_STYLE,
         ),
         sprite_name="player_marisa",
-        sprite_offset_x=-21,
-        sprite_offset_y=-32,
+        sprite_offset_x=-27,
+        sprite_offset_y=-40,
     )
 
 

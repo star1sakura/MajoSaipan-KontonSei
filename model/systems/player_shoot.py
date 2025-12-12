@@ -132,10 +132,15 @@ def _fire_options_new(
         # 计算追踪目标角度（查找最近敌人）
         target_angle = _find_nearest_enemy_angle(state, opt_pos[0], opt_pos[1])
 
+        # 计算实际子弹速度（应用强化倍率）
+        effective_speed = option_cfg.bullet_speed
+        if is_enhanced:
+             effective_speed *= shot_config.enhanced_speed_multiplier
+
         # 执行射击模式 - 只返回数据
         results = execute_option_shot(
             kind=option_cfg.option_shot_kind,
-            speed=option_cfg.bullet_speed,
+            speed=effective_speed,
             is_focusing=is_focusing,
             target_angle=target_angle,
         )
