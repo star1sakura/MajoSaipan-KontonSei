@@ -64,10 +64,10 @@ def _fire_with_pattern(
     spawn_x = pos.x
     spawn_y = pos.y - offset
 
-    # 执行射击模式 - 只返回数据
+    # 执行射击模式，只返回数据
     results = execute_player_shot(config, is_focusing, is_enhanced)
 
-    # 计算伤害和类型
+    # 计算伤害值和子弹类型
     if is_enhanced:
         damage = int(config.damage * config.enhanced_damage_multiplier)
         kind = PlayerBulletKind.MAIN_ENHANCED
@@ -75,7 +75,7 @@ def _fire_with_pattern(
         damage = config.damage
         kind = PlayerBulletKind.MAIN_NORMAL
 
-    # spawn 在这里统一处理
+    # 在此统一生成主机子弹实体
     for shot in results:
         spawn_player_bullet_with_velocity(
             state,
@@ -92,7 +92,7 @@ def _fire_with_pattern(
         base_cooldown *= config.enhanced_cooldown_multiplier
     shot_pattern.timer = base_cooldown
 
-    # 子机射击
+    # 处理子机射击
     _fire_options_new(state, player, config, pos, is_focusing, is_enhanced)
 
 
@@ -145,7 +145,7 @@ def _fire_options_new(
             target_angle=target_angle,
         )
 
-        # spawn 在这里统一处理
+        # 在此统一生成子机子弹实体
         for shot in results:
             spawn_player_bullet_with_velocity(
                 state,
@@ -182,9 +182,9 @@ def _find_nearest_enemy_angle(state: GameState, x: float, y: float) -> float | N
     if to_enemy.length_squared() < 1e-9:
         return None
 
-    # as_polar() 返回 (length, angle_deg)
-    # pygame 角度：向右=0°, 向下=90°, 向上=-90°
-    # 我们需要：向上=0°, 向右=90°（给 Vector2(0,-speed).rotate() 用）
-    # 转换：result = pygame_angle + 90
+    # as_polar() 返回 (长度, 角度)
+    # pygame 角度：向右=0°，向下=90°，向上=-90°
+    # 我们需要：向上=0°，向右=90°（给 Vector2(0,-speed).rotate() 用）
+    # 转换公式：result = pygame_angle + 90
     _, pygame_angle = to_enemy.as_polar()
     return pygame_angle + 90
