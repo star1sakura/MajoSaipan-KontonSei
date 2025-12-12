@@ -2,6 +2,7 @@
 """
 Stage 1 Boss 工厂函数。
 使用纯组件组合方式定义 Boss（类似 spawn_fairy_small 模式）。
+现在支持 pattern_combinators 实现更丰富的弹幕时序。
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from ..components import (
     PhaseType, BossPhase, BossState, BossMovementState, BossHudData,
 )
 from ..bullet_patterns import BulletPatternConfig, BulletPatternKind
+from ..pattern_combinators import stagger, repeat
 from ..systems.stage_system import boss_registry
 
 
@@ -24,7 +26,8 @@ def spawn_stage1_boss(state: GameState, x: float, y: float) -> Actor:
     """
     Stage 1 Boss：妖精大王
     - 2 阶段：1 非符 + 1 符卡
-    - 简单的 N_WAY 和 SPIRAL 弹幕
+    - 非符：stagger N_WAY（错峰发射）
+    - 符卡：repeat SPIRAL（重复+旋转）
     """
     boss = Actor()
 
@@ -52,22 +55,34 @@ def spawn_stage1_boss(state: GameState, x: float, y: float) -> Actor:
 
     # ====== Boss 专用组件 ======
 
+    # 非符弹幕基础配置
+    non_spell_base = BulletPatternConfig(
+        kind=BulletPatternKind.N_WAY,
+        bullet_speed=180.0,
+        damage=1,
+        count=7,
+        spread_deg=80.0,
+    )
+
+    # 符卡弹幕基础配置
+    spell_base = BulletPatternConfig(
+        kind=BulletPatternKind.SPIRAL,
+        bullet_speed=150.0,
+        damage=1,
+        count=8,
+        spin_speed_deg=45.0,
+    )
+
     # 定义阶段列表
     phases = [
-        # 非符 1: N_WAY 弹幕
+        # 非符 1: stagger N_WAY 弹幕（错峰发射，每颗延迟 0.03 秒）
         BossPhase(
             phase_type=PhaseType.NON_SPELL,
             hp=500,
             duration=30.0,
-            pattern=BulletPatternConfig(
-                kind=BulletPatternKind.N_WAY,
-                bullet_speed=180.0,
-                damage=1,
-                count=5,
-                spread_deg=60.0,
-            ),
+            pattern=stagger(non_spell_base, delay_per_bullet=0.03),
         ),
-        # 符卡 1: SPIRAL 弹幕
+        # 符卡 1: repeat SPIRAL 弹幕（3 轮，每轮间隔 0.12 秒，每轮旋转 15 度）
         BossPhase(
             phase_type=PhaseType.SPELL_CARD,
             hp=800,
@@ -75,13 +90,7 @@ def spawn_stage1_boss(state: GameState, x: float, y: float) -> Actor:
             spell_name="妖符「星屑乱舞」",
             spell_bonus=50000,
             damage_multiplier=0.8,
-            pattern=BulletPatternConfig(
-                kind=BulletPatternKind.SPIRAL,
-                bullet_speed=150.0,
-                damage=1,
-                count=8,
-                spin_speed_deg=45.0,
-            ),
+            pattern=repeat(spell_base, times=3, interval=0.12, rotate=15.0),
         ),
     ]
 
@@ -119,3 +128,4 @@ def spawn_stage1_boss(state: GameState, x: float, y: float) -> Actor:
 
     state.add_actor(boss)
     return boss
+

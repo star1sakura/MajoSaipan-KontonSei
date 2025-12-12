@@ -10,6 +10,7 @@ from model.systems.player_movement import player_move_system
 from model.systems.player_shoot import player_shoot_system
 from model.systems.option_system import option_system
 from model.systems.enemy_shoot import enemy_shoot_system
+from model.systems.delayed_bullet_system import delayed_bullet_system
 from model.systems.collision import collision_detection_system
 from model.systems.collision_damage_system import collision_damage_system
 from model.systems.bomb_hit_system import bomb_hit_system
@@ -165,6 +166,7 @@ class GameController:
             option_system(self.state, dt)  # 子机位置更新（在移动后、射击前）
             player_shoot_system(self.state, dt)
             enemy_shoot_system(self.state, dt)
+            delayed_bullet_system(self.state, dt)  # 处理延迟子弹队列
 
             # PoC 系统：更新点收集激活标记
             poc_system(self.state)

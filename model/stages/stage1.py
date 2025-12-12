@@ -27,7 +27,7 @@ def setup_stage1(state: GameState) -> None:
         start_x=80.0,
         start_y=top_y,
         spacing_x=40.0,
-        path_name="straight_down_slow",   # ★ 这波用慢速下落路径
+        path_name="straight_down_slow",   # 这波用慢速下落路径
         description="Wave 1: line + straight down",
     ))
 
