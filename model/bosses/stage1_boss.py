@@ -405,12 +405,18 @@ def phase2_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
             )
         
         # 流星五角星从屏幕边缘飞入
+        screen_h = ctx.state.height
+        center_x = screen_w / 2
+        center_y = screen_h / 2
+        
         if wave % 4 == 1:
-            # 从左上角
-            yield from _draw_meteor_star(ctx, 40, 40, 45, rotation, 130)
+            # 从左上角飞向中央
+            angle_to_center = math.degrees(math.atan2(center_y - 40, center_x - 40))
+            yield from _draw_meteor_star(ctx, 40, 40, 45, rotation, angle_to_center)
         elif wave % 4 == 3:
-            # 从右上角
-            yield from _draw_meteor_star(ctx, screen_w - 40, 40, 45, -rotation, 50)
+            # 从右上角飞向中央
+            angle_to_center = math.degrees(math.atan2(center_y - 40, center_x - (screen_w - 40)))
+            yield from _draw_meteor_star(ctx, screen_w - 40, 40, 45, -rotation, angle_to_center)
         
         # 环形弹幕填充
         if wave % 2 == 0:
@@ -430,21 +436,35 @@ def _draw_meteor_star(
     rotation: float,
     meteor_angle: float,
 ) -> Generator[int, None, None]:
-    """辅助函数：一颗一颗画出流星五角星"""
+    """
+    辅助函数：一颗一颗画出流星五角星
+    
+    关键：yield N 的实际帧间隔是 N+1（因为 wait_frames 在下一帧才开始递减）
+    所以同步公式需要用 frame_gap = draw_interval + 1
+    """
     bullets_per_edge = 5
-    draw_interval = 2
+    draw_interval = 2  # yield 的值
+    move_speed = 90  # 移动速度
+    hold_frames = 120  # 保持形状移动的帧数
+    
+    # 关键修正：yield N 的实际帧间隔是 N+1
+    frame_gap = draw_interval + 1
     
     vertices = []
     for k in range(5):
         angle_deg = rotation + k * 72 - 90
-        angle_rad = math.radians(angle_deg)
-        vx = radius * math.cos(angle_rad)
-        vy = radius * math.sin(angle_rad)
+        a_rad = math.radians(angle_deg)
+        vx = radius * math.cos(a_rad)
+        vy = radius * math.sin(a_rad)
         vertices.append((vx, vy))
     
     edge_indices = [(0, 2), (2, 4), (4, 1), (1, 3), (3, 0)]
     total_bullets = 5 * bullets_per_edge
-    total_draw_frames = total_bullets * draw_interval
+    
+    # 计算同步等待时间
+    # 最后一颗子弹需要 WAIT(1)（不能是0，因为WAIT(0)仍消耗1帧处理）
+    # 所以 total_wait = (total_bullets - 1) * frame_gap + 1
+    total_wait = (total_bullets - 1) * frame_gap + 1
     
     bullet_idx = 0
     for start_idx, end_idx in edge_indices:
@@ -462,25 +482,31 @@ def _draw_meteor_star(
             rel_x = start_vx + t * edge_dx
             rel_y = start_vy + t * edge_dy
             
+            # 子弹在固定的五角星位置生成
             bullet_x = start_x + rel_x
             bullet_y = start_y + rel_y
             
             arc_spread = 55
             final_angle = base_scatter_angle + (t - 0.5) * arc_spread
             turn_duration = 25 + int(abs(t - 0.5) * 35)
-            wait_for_draw = total_draw_frames - bullet_idx * draw_interval
+            
+            # 同步等待：早期子弹等待更久，所有子弹同时开始移动
+            wait_for_sync = total_wait - bullet_idx * frame_gap
             
             motion = (MotionBuilder(speed=0, angle=meteor_angle)
-                .wait(wait_for_draw)
-                .set_speed(90)
-                .wait(40)
+                .wait(wait_for_sync)  # 等待同步
+                .set_speed(move_speed)  # 同时开始移动
+                .wait(hold_frames)  # 保持形状移动
                 .turn_to(final_angle, turn_duration)
                 .accelerate_to(120, 25)
                 .build())
             
             ctx.fire(bullet_x, bullet_y, 0, meteor_angle, "bullet_small", motion=motion)
             bullet_idx += 1
-            yield draw_interval
+            
+            # 逐颗画：每颗子弹之间间隔 draw_interval 帧
+            if bullet_idx < total_bullets:
+                yield draw_interval
 
 
 def phase3_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:

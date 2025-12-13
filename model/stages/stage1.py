@@ -1,9 +1,9 @@
 # model/stages/stage1.py
 """
-Stage 1 script using the Task-based stage system.
+第一关脚本，使用 Task 协程系统。
 
-This module provides the stage1_script generator function that defines
-the timeline for Stage 1 using the new Task/TaskContext system.
+本模块提供 stage1_script 生成器函数，使用 Task/TaskContext 系统
+定义第一关的时间线。
 
 Requirements: 10.1, 10.2, 10.4, 10.5
 """
@@ -27,14 +27,14 @@ if TYPE_CHECKING:
 
 def stage1_script(ctx: "TaskContext") -> Generator[int, None, None]:
     """
-    Stage 1 main script.
+    第一关主脚本。
     
-    Timeline:
-    - Wave 1 (t=5s): 5 small fairies in horizontal line
-    - Wave 2 (t=10s): 6 small fairies in vertical column with sine movement
-    - Wave 3 (t=15s): 5 large fairies in fan pattern
-    - Wave 4 (t=20s): 12 small fairies in spiral pattern with diagonal movement
-    - Boss (after enemies cleared): Stage 1 Boss
+    时间线：
+    - 第 1 波 (t=5s): 5 只小妖精横排
+    - 第 2 波 (t=10s): 6 只小妖精纵队，正弦摇摆
+    - 第 3 波 (t=15s): 5 只大妖精扇形排列
+    - 第 4 波 (t=20s): 12 只小妖精螺旋排列，斜向移动
+    - Boss (敌人清空后): 第一关 Boss
     
     Requirements: 10.1, 10.2, 10.4, 10.5
     """
@@ -43,10 +43,10 @@ def stage1_script(ctx: "TaskContext") -> Generator[int, None, None]:
     center_x = width / 2
     top_y = 120
     
-    # Initial delay before first wave
-    yield 300  # 5 seconds at 60 FPS
+    # 开场延迟
+    yield 300  # 5 秒 (60 FPS)
 
-    # Wave 1: 5 small fairies in horizontal line (left side)
+    # 第 1 波：5 只小妖精横排（左侧）
     for i in range(5):
         ctx.spawn_enemy(
             EnemyKind.FAIRY_SMALL,
@@ -55,9 +55,9 @@ def stage1_script(ctx: "TaskContext") -> Generator[int, None, None]:
             behavior=fairy_behavior_straight,
         )
     
-    yield 300  # Wait 5 seconds
+    yield 300  # 等待 5 秒
     
-    # Wave 2: 6 small fairies in vertical column with sine movement
+    # 第 2 波：6 只小妖精纵队，正弦摇摆
     for i in range(6):
         ctx.spawn_enemy(
             EnemyKind.FAIRY_SMALL,
@@ -66,14 +66,14 @@ def stage1_script(ctx: "TaskContext") -> Generator[int, None, None]:
             behavior=fairy_behavior_sine,
         )
     
-    yield 300  # Wait 5 seconds
+    yield 300  # 等待 5 秒
     
-    # Wave 3: 5 large fairies in fan pattern
-    base_angle = 90.0  # degrees, pointing down
+    # 第 3 波：5 只大妖精扇形排列
+    base_angle = 90.0  # 度，朝下
     angle_step = 15.0
     radius = 80.0
     for i in range(5):
-        angle = base_angle + (i - 2) * angle_step  # -30, -15, 0, 15, 30 degrees offset
+        angle = base_angle + (i - 2) * angle_step  # -30, -15, 0, 15, 30 度偏移
         rad = math.radians(angle)
         x = center_x + radius * math.cos(rad)
         y = top_y + 40 + radius * math.sin(rad)
@@ -84,9 +84,9 @@ def stage1_script(ctx: "TaskContext") -> Generator[int, None, None]:
             behavior=fairy_behavior_1,
         )
     
-    yield 300  # Wait 5 seconds
+    yield 300  # 等待 5 秒
     
-    # Wave 4: 12 small fairies in spiral pattern with diagonal movement
+    # 第 4 波：12 只小妖精螺旋排列，斜向移动
     spiral_radius = 40.0
     radius_step = 6.0
     angle_deg = 0.0
@@ -103,15 +103,15 @@ def stage1_script(ctx: "TaskContext") -> Generator[int, None, None]:
             behavior=fairy_behavior_diagonal,
         )
 
-    yield 120  # Wait 2 seconds
+    yield 120  # 等待 2 秒
     
-    # Wait for all enemies to be cleared
+    # 等待所有敌人被清空
     while ctx.enemies_alive() > 0:
         yield 1
     
-    yield 60  # Short pause before boss
+    yield 60  # Boss 出场前短暂停顿
     
-    # Boss spawn (if boss is registered)
+    # 生成 Boss（如果已注册）
     try:
         boss = ctx.spawn_boss(
             "stage1_boss",
@@ -119,7 +119,7 @@ def stage1_script(ctx: "TaskContext") -> Generator[int, None, None]:
             y=top_y,
         )
         
-        # Wait for boss to be defeated
+        # 等待 Boss 被击败
         from model.components import Health
         while True:
             health = boss.get(Health)
@@ -127,33 +127,33 @@ def stage1_script(ctx: "TaskContext") -> Generator[int, None, None]:
                 break
             yield 1
     except ValueError:
-        # Boss not registered yet, skip boss phase
+        # Boss 尚未注册，跳过 Boss 阶段
         pass
     
-    # Stage complete
+    # 关卡完成
     ctx.state.stage.finished = True
 
 
 def setup_stage1(state: "GameState") -> None:
     """
-    Initialize Stage 1 using the Task-based stage system.
+    使用 Task 协程系统初始化第一关。
     
-    This function creates a StageRunner and starts the stage1_script Task.
+    此函数创建 StageRunner 并启动 stage1_script Task。
     
     Args:
-        state: The GameState to initialize the stage in
+        state: 要初始化关卡的 GameState
     
     Requirements: 10.1
     """
     from model.stage import StageState
     from model.scripting.stage_runner import StageRunner
     
-    # Create stage state
+    # 创建关卡状态
     state.stage = StageState()
     
-    # Create and attach stage runner
+    # 创建并附加关卡执行器
     stage_runner = StageRunner()
     state.stage_runner = stage_runner
     
-    # Start the stage script
+    # 启动关卡脚本
     stage_runner.start_stage(state, stage1_script, rng_seed=0)
