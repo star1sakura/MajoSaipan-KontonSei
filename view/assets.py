@@ -248,6 +248,36 @@ class Assets:
             pygame.draw.circle(surf, (255, 255, 255), (8, 8), 6, 1)
             self.images["ui_boss_life_icon"] = surf
 
+        # ====== Status Title ======
+        try:
+            st_img = pygame.image.load("assets/ui/ui_status_title.png").convert_alpha()
+            # Scale proportionally to Width 160
+            current_w, current_h = st_img.get_size()
+            target_w = 160
+            ratio = target_w / current_w
+            target_h = int(current_h * ratio)
+            self.images["ui_status_title"] = pygame.transform.smoothscale(st_img, (target_w, target_h))
+        except (FileNotFoundError, pygame.error):
+            # Fallback placeholder (160x40)
+            surf = pygame.Surface((160, 40), pygame.SRCALPHA)
+            pygame.draw.rect(surf, (100, 100, 255), (0,0,160,40), 2)
+            self.images["ui_status_title"] = surf
+
+        # ====== Boss Title ======
+        try:
+            bt_img = pygame.image.load("assets/ui/ui_boss_title.png").convert_alpha()
+            # Scale proportionally to Width 160
+            current_w, current_h = bt_img.get_size()
+            target_w = 160
+            ratio = target_w / current_w
+            target_h = int(current_h * ratio)
+            self.images["ui_boss_title"] = pygame.transform.smoothscale(bt_img, (target_w, target_h))
+        except (FileNotFoundError, pygame.error):
+            # Fallback placeholder (160x40)
+            surf = pygame.Surface((160, 40), pygame.SRCALPHA)
+            pygame.draw.rect(surf, (255, 100, 100), (0,0,160,40), 2)
+            self.images["ui_boss_title"] = surf
+
         # 3. Option Tracking Bullet (Unique)
         try:
             # assets/sprites/bullets/bullet_option.png

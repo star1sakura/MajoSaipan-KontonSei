@@ -345,9 +345,12 @@ class Renderer:
             surf = self.font_small.render(text, True, color)
             self.screen.blit(surf, (x, cur_y))
 
-        # 1. 标题
-        draw_text_outline("=== STATUS ===", (200, 200, 255), y)
-        y += 40
+        # 1. 标题 (Image)
+        status_title = self.assets.get_image("ui_status_title")
+        sidebar_w = self.screen.get_width() - state.width
+        title_x = state.width + (sidebar_w - status_title.get_width()) // 2
+        self.screen.blit(status_title, (title_x, y))
+        y += status_title.get_height() + 10
 
         # 2. 分数 (黄色)
         draw_text_outline(f"SCORE  {hud.score:09d}", (255, 220, 0), y)
@@ -398,9 +401,13 @@ class Renderer:
                 break
         
         if boss_hud:
-            y += 30
-            draw_text_outline("=== BOSS ===", (255, 100, 100), y)
-            y += 32
+            y += 50 # 往下移多一点，避免太挤
+            # 1. Boss Title (Image)
+            boss_title = self.assets.get_image("ui_boss_title")
+            sidebar_w = self.screen.get_width() - state.width
+            title_x = state.width + (sidebar_w - boss_title.get_width()) // 2
+            self.screen.blit(boss_title, (title_x, y))
+            y += boss_title.get_height() + 10
             draw_text_outline(boss_hud.boss_name, (255, 200, 200), y)
             
             # 符卡名
