@@ -32,8 +32,6 @@ from model.systems.render_hint_system import render_hint_system
 from model.systems.hud_data_system import hud_data_system
 from model.systems.stats_system import stats_system
 from model.systems.death_effect import player_respawn_visual_system
-from model.systems.boss_phase_system import boss_phase_system
-from model.systems.boss_movement_system import boss_movement_system
 from model.systems.boss_hud_system import boss_hud_system
 from model.systems.task_system import task_system
 from model.systems.motion_program_system import motion_program_system
@@ -186,9 +184,6 @@ class GameController:
         gravity_system(self.state, dt)
         item_autocollect_system(self.state, dt)
 
-        # Boss 移动系统（在普通移动前）
-        boss_movement_system(self.state, dt)
-
         # 1.5 MotionSystem: 更新子弹 MotionProgram，修改 Velocity
         # Requirements 8.2: MotionSystem 在 movement_system 之前执行
         motion_program_system(self.state, dt)
@@ -208,9 +203,6 @@ class GameController:
         # 3. 碰撞检测与事件处理
         collision_detection_system(self.state)
         collision_damage_system(self.state, dt)
-
-        # Boss 阶段系统：检测血量耗尽或超时，处理阶段转换
-        boss_phase_system(self.state, dt)
 
         bomb_hit_system(self.state, dt)
         graze_system(self.state, dt)
