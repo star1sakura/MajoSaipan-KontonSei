@@ -6,6 +6,8 @@ import pygame
 
 from controller.game_controller import GameController
 from model.character import CharacterId, get_all_characters
+from view.assets import Assets
+from view.main_menu import MainMenu, MenuResult
 
 
 def _parse_character_id(name: str | None) -> CharacterId | None:
@@ -44,22 +46,57 @@ def main():
     parser.add_argument(
         "-c",
         "--character",
-        help="角色 ID 名称（如 REIMU_A, MARISA_A）。留空则进入交互选择。",
+        help="角色 ID 名称（如 REIMU_A, MARISA_A）。留空则进入主菜单。",
+    )
+    parser.add_argument(
+        "--skip-menu",
+        action="store_true",
+        help="跳过主菜单直接开始游戏（需配合 -c 使用）。",
     )
     args = parser.parse_args()
-
-    # 确定角色 ID
-    character_id = _parse_character_id(args.character)
-    if character_id is None:
-        character_id = _prompt_character_id()
 
     pygame.init()
 
     display_width = 720
     display_height = 640
     screen = pygame.display.set_mode((display_width, display_height))
-    pygame.display.set_caption("Touhou-like STG")
+    pygame.display.set_caption("東方混沌勢 ~ Touhou KontonSei")
 
+    # 如果指定了角色且跳过菜单，直接开始
+    character_id = _parse_character_id(args.character)
+    if character_id is not None and args.skip_menu:
+        _start_game(screen, display_width, display_height, character_id)
+        return
+
+    # 否则显示主菜单
+    while True:
+        # 加载资源用于菜单
+        assets = Assets()
+        assets.load()
+        
+        menu = MainMenu(screen, assets)
+        result, selected_character = menu.run()
+        
+        if result == MenuResult.EXIT:
+            pygame.quit()
+            return
+        elif result == MenuResult.START_GAME:
+            # 开始游戏
+            should_quit = _start_game(screen, display_width, display_height, selected_character)
+            if should_quit:
+                # 窗口关闭按钮被点击，直接退出程序
+                pygame.quit()
+                return
+            # 否则返回主菜单（循环继续）
+
+
+def _start_game(
+    screen: pygame.Surface,
+    display_width: int,
+    display_height: int,
+    character_id: CharacterId | None
+) -> bool:
+    """启动游戏，返回 True 表示窗口被关闭需要退出程序"""
     controller = GameController(
         screen_width=display_width,
         screen_height=display_height,
@@ -68,6 +105,7 @@ def main():
         game_width=480
     )
     controller.run()
+    return controller.quit_requested
 
 
 if __name__ == "__main__":

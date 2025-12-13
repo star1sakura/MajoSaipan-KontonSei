@@ -2,3 +2,12 @@
 __pycache__/
 .VSCodeCounter/
 train/
+.pytest_cache/
+.kiro/
+.vscode/
+.claude/
+.hypothesis/
+claude.md
+game_blog.md
+tests/
+docs/

@@ -65,6 +65,7 @@ class GameController:
 
         self.clock = pygame.time.Clock()
         self.running = True
+        self.quit_requested = False  # 窗口关闭请求（区别于返回菜单）
         self.accumulator = 0.0  # 时间累积器
 
         self.assets = Assets()
@@ -128,6 +129,7 @@ class GameController:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+                self.quit_requested = True  # 标记为窗口关闭请求
 
         keys = pygame.key.get_pressed()
         state["left"] = keys[pygame.K_LEFT]
@@ -254,4 +256,4 @@ class GameController:
             # 渲染
             self.renderer.render(self.state)
 
-        pygame.quit()
+        # 不在这里调用 pygame.quit()，让主循环控制退出
