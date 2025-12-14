@@ -796,134 +796,200 @@ def _draw_meteor_star(
             
 
 
+def _draw_double_ring_pentagrams(
+    ctx: "TaskContext",
+    cx: float,
+    cy: float,
+    # Large star params
+    large_star_radius: float,
+    large_orbit_radius: float,
+    large_fly_frames: int,
+    # Small star params
+    small_star_radius: float,
+    small_orbit_radius: float,
+    small_fly_frames: int,
+    # Common params
+    bullets_per_edge: int,
+    draw_interval: int,
+    hold_frames: int,
+    scatter_speed: float,
+    hover_frames: int,
+    edge_scatter_speed: float,
+    archetype_large: str = "bullet_medium",
+    archetype_small: str = "bullet_small",
+    base_rotation: float = 0.0,
+) -> Generator[int, None, None]:
+    """
+    Phase 3 专用：双环五角星
+    外圈10个大五角星，内圈10个小五角星（交错），一起飞出但距离不同。
+    """
+    num_stars_per_ring = 10
+    total_bullets_per_star = 5 * bullets_per_edge
+    frame_gap = draw_interval + 1
+    
+    # 预计算所有五角星参数
+    stars_data = []
+    
+    for s in range(num_stars_per_ring):
+        # --- 大星星 (外圈) ---
+        angle_deg = base_rotation + s * (360 / num_stars_per_ring)
+        angle_rad = math.radians(angle_deg)
+        cx_large = cx + large_orbit_radius * math.cos(angle_rad)
+        cy_large = cy + large_orbit_radius * math.sin(angle_rad)
+        
+        # 顶点
+        vertices_large = []
+        for k in range(5):
+            v_angle = k * 72 - 90
+            v_rad = math.radians(v_angle)
+            vx = large_star_radius * math.cos(v_rad)
+            vy = large_star_radius * math.sin(v_rad)
+            vertices_large.append((vx, vy))
+            
+        stars_data.append({
+            'cx': cx_large, 'cy': cy_large,
+            'vertices': vertices_large,
+            'scatter_angle': angle_deg,
+            'fly_frames': large_fly_frames,
+            'archetype': archetype_large
+        })
+        
+        # --- 小星星 (内圈，交错角度) ---
+        # 角度偏移 18 度 (360/20)
+        angle_small_deg = angle_deg + 18
+        angle_small_rad = math.radians(angle_small_deg)
+        cx_small = cx + small_orbit_radius * math.cos(angle_small_rad)
+        cy_small = cy + small_orbit_radius * math.sin(angle_small_rad)
+        
+        vertices_small = []
+        for k in range(5):
+            v_angle = k * 72 - 90
+            v_rad = math.radians(v_angle)
+            vx = small_star_radius * math.cos(v_rad)
+            vy = small_star_radius * math.sin(v_rad)
+            vertices_small.append((vx, vy))
+            
+        stars_data.append({
+            'cx': cx_small, 'cy': cy_small,
+            'vertices': vertices_small,
+            'scatter_angle': angle_small_deg,
+            'fly_frames': small_fly_frames,
+            'archetype': archetype_small
+        })
+    
+    edge_indices = [(0, 2), (2, 4), (4, 1), (1, 3), (3, 0)]
+    
+    bullet_idx = 0
+    for edge_idx, (start_idx, end_idx) in enumerate(edge_indices):
+        for j in range(bullets_per_edge):
+            t = j / max(bullets_per_edge - 1, 1)
+            
+            # 为所有20个星星创建子弹
+            for star in stars_data:
+                star_cx = star['cx']
+                star_cy = star['cy']
+                vertices = star['vertices']
+                star_angle = star['scatter_angle']
+                fly_frames = star['fly_frames']
+                archetype = star['archetype']
+                
+                start_vx, start_vy = vertices[start_idx]
+                end_vx, end_vy = vertices[end_idx]
+                edge_dx = end_vx - start_vx
+                edge_dy = end_vy - start_vy
+                
+                rel_x = start_vx + t * edge_dx
+                rel_y = start_vy + t * edge_dy
+                
+                bullet_x = star_cx + rel_x
+                bullet_y = star_cy + rel_y
+                
+                # 边散开参数
+                mid_x = (start_vx + end_vx) / 2
+                mid_y = (start_vy + end_vy) / 2
+                base_edge_angle = math.degrees(math.atan2(mid_y, mid_x))
+                
+                angle_spread = 50
+                edge_scatter_angle = base_edge_angle + (t - 0.5) * angle_spread
+                
+                # 速度梯度：小星星梯度更大（两头速度不一样）
+                # 大星星: 0.8~1.3 (scale=0.5)
+                # 小星星: 0.6~1.4 (scale=0.8)，梯度更明显
+                if archetype == archetype_small:
+                    speed_factor = 0.9 + t * 0.6
+                else:
+                    speed_factor = 0.7 + t * 0.6
+                final_edge_speed = edge_scatter_speed * speed_factor
+                
+                # 同步等待
+                wait_for_sync = (total_bullets_per_star - 1 - bullet_idx) * frame_gap + 1
+                
+                # 平滑运动参数
+                accel_frames = 20
+                decel_frames = 20
+                cruise_frames = int(fly_frames - 0.5 * (accel_frames + decel_frames))
+                if cruise_frames < 0:
+                    cruise_frames = 0
+                    accel_frames = fly_frames // 2
+                    decel_frames = fly_frames - accel_frames
+                
+                motion = (MotionBuilder(speed=0, angle=star_angle)
+                    .wait(wait_for_sync)
+                    .wait(hold_frames)
+                    .accelerate_to(scatter_speed, accel_frames)
+                    .wait(cruise_frames)
+                    .accelerate_to(0, decel_frames)
+                    .wait(hover_frames)
+                    .set_angle(edge_scatter_angle)
+                    .accelerate_to(final_edge_speed, 20)
+                    .build())
+                
+                ctx.fire(bullet_x, bullet_y, 0, star_angle, archetype, motion=motion)
+            
+            bullet_idx += 1
+            if bullet_idx < total_bullets_per_star:
+                yield draw_interval
+
+
 def phase3_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
     """
-    Phase 3: 符卡「星辰万象」
+    Phase 3: 符卡「双重星环」
     
-    终极弹幕 - 多种图案的华丽组合：
-    1. 蝴蝶曲线弹幕从中心绽放
-    2. 双层反向旋转的玫瑰曲线
-    3. 五角星追踪弹
-    4. 螺旋臂扫射
+    复用第一阶段，但同时画10个大五角星和10个小五角星。
+    小五角星在内圈交错，飞出距离较短。
     """
-    rotation = 0.0
     wave = 0
+    
+    # 移动到屏幕中心上方
+    yield from ctx.move_to(ctx.state.width / 2, 100, frames=60)
     
     while True:
         x, y = ctx.owner_pos()
         
-        # 主弹幕：根据波次切换不同图案
-        pattern = wave % 5
+        yield from _draw_double_ring_pentagrams(
+            ctx, x, y,
+            # 大星星参数
+            large_star_radius=80,
+            large_orbit_radius=80,
+            large_fly_frames=60,   # 飞得远
+            # 小星星参数
+            small_star_radius=50,  # 较小
+            small_orbit_radius=50, # 轨道较小
+            small_fly_frames=30,   # 飞得近
+            # 通用参数
+            bullets_per_edge=10,
+            draw_interval=2,
+            hold_frames=40,
+            scatter_speed=160,
+            hover_frames=30,
+            edge_scatter_speed=100,
+            archetype_large="bullet_medium", # 大星星用中弹
+            archetype_small="bullet_small",  # 小星星用小弹
+            base_rotation=wave * 12
+        )
         
-        if pattern == 0:
-            # 蝴蝶曲线绽放
-            fire_butterfly(
-                ctx, x, y,
-                bullet_count=48,
-                scale=50,
-                speed=55,
-                archetype="bullet_small",
-                rotation=rotation,
-            )
-            # 内圈小玫瑰
-            fire_rose_curve(
-                ctx, x, y,
-                petals=4,
-                radius=40,
-                bullet_count=16,
-                speed=70,
-                archetype="bullet_medium",
-                rotation=-rotation,
-                expand_first=False,
-                hold_frames=0,
-            )
-            
-        elif pattern == 1:
-            # 双层反向玫瑰
-            fire_rose_curve(
-                ctx, x, y,
-                petals=5,
-                radius=70,
-                bullet_count=35,
-                speed=60,
-                archetype="bullet_small",
-                rotation=rotation,
-                expand_first=True,
-                hold_frames=30,
-            )
-            fire_rose_curve(
-                ctx, x, y,
-                petals=3,
-                radius=50,
-                bullet_count=21,
-                speed=75,
-                archetype="bullet_medium",
-                rotation=-rotation + 60,
-                expand_first=True,
-                hold_frames=20,
-            )
-            
-        elif pattern == 2:
-            # 螺旋星系 + 追踪弹
-            fire_spiral_galaxy(
-                ctx, x, y,
-                arms=5,
-                bullets_per_arm=10,
-                base_radius=70,
-                spiral_tightness=200,
-                speed=55,
-                archetype="bullet_small",
-                rotation=rotation,
-                clockwise=True,
-            )
-            # 追踪弹
-            for i in range(5):
-                angle = rotation + i * 72 + 36
-                motion = (MotionBuilder(speed=30, angle=angle)
-                    .wait(40)
-                    .aim_player()
-                    .accelerate_to(150, 25)
-                    .build())
-                ctx.fire(x, y, 30, angle, "bullet_large", motion=motion)
-                
-        elif pattern == 3:
-            # 扩散五角星 + 环形弹幕
-            fire_pentagram_radial(
-                ctx, x, y,
-                radius=65,
-                bullets_per_edge=7,
-                expand_speed=70,
-                hold_frames=25,
-                scatter_speed=110,
-                scatter_frames=20,
-                archetype="bullet_small",
-                rotation=rotation,
-            )
-            # 双层环形
-            fire_ring(ctx, x, y, count=12, speed=85, archetype="bullet_medium", 
-                     start_angle=rotation)
-            fire_ring(ctx, x, y, count=12, speed=65, archetype="bullet_small", 
-                     start_angle=-rotation + 15)
-                     
-        else:  # pattern == 4
-            # 全屏花火 - 多个小玫瑰同时绽放
-            offsets = [(0, 0), (-60, -30), (60, -30), (-40, 40), (40, 40)]
-            for ox, oy in offsets:
-                fire_rose_curve(
-                    ctx, x + ox, y + oy,
-                    petals=3,
-                    radius=35,
-                    bullet_count=15,
-                    speed=50 + abs(ox) * 0.3,
-                    archetype="bullet_small" if ox == 0 else "bullet_medium",
-                    rotation=rotation + ox,
-                    expand_first=True,
-                    hold_frames=20,
-                )
-        
-        rotation += 13
         wave += 1
-        yield 50
+        yield 120
 
 
 # ============ Boss 主脚本（纯脚本驱动） ============
@@ -982,10 +1048,10 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
     yield from ctx.phase_transition(frames=60)
     yield from ctx.move_to(ctx.state.width / 2, 100, frames=30)
     
-    # === Phase 3: 符卡「星辰万象」 ===
+    # === Phase 3: 符卡「双重星环」 ===
     ctx.update_boss_hud(phases_remaining=1)
     yield from ctx.run_spell_card(
-        name="幻符「星辰万象」",
+        name="幻符「双重星环」",
         bonus=150000,
         pattern=phase3_spellcard,
         timeout_seconds=60.0,
