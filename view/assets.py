@@ -13,7 +13,7 @@ class Assets:
 
     def __init__(self) -> None:
         self.images: dict[str, pygame.Surface] = {}
-        self.font_path = "assets/fonts/DotGothic16-Regular.ttf"
+        self.font_path = "assets/fonts/OPPOSans-Bold.ttf"
 
     def load(self) -> None:
         # Load Character Sprite Sheet
@@ -277,6 +277,79 @@ class Assets:
             surf = pygame.Surface((160, 40), pygame.SRCALPHA)
             pygame.draw.rect(surf, (255, 100, 100), (0,0,160,40), 2)
             self.images["ui_boss_title"] = surf
+
+        # ====== Main Menu Logo ======
+        try:
+            logo_img = pygame.image.load("assets/ui/logo.png").convert_alpha()
+            w, h = logo_img.get_size()
+            # Limit width if too large
+            if w > 600:
+                scale = 600 / w
+                logo_img = pygame.transform.smoothscale(logo_img, (600, int(h * scale)))
+            self.images["menu_logo"] = logo_img
+        except (FileNotFoundError, pygame.error):
+            pass # Key won't exist, main_menu will fallback to text
+
+        # ====== Main Menu Background (with Logo) ======
+        try:
+            bg_img = pygame.image.load("assets/ui/menu_bg.png").convert()
+            # Scale to Window Size (720x640)
+            self.images["menu_bg"] = pygame.transform.smoothscale(bg_img, (720, 640))
+        except (FileNotFoundError, pygame.error):
+            pass # Fallback to color fill
+
+        # ====== Menu Cursor ======
+        try:
+            cursor_img = pygame.image.load("assets/ui/menu_cursor.png").convert_alpha()
+            # Scale proportionally to Height 36 (match font size)
+            w, h = cursor_img.get_size()
+            target_h = 36
+            ratio = target_h / h
+            target_w = int(w * ratio)
+            self.images["menu_cursor"] = pygame.transform.smoothscale(cursor_img, (target_w, target_h))
+        except (FileNotFoundError, pygame.error):
+            pass
+
+        # ====== Character Portraits ======
+        # ====== Character Portraits ======
+        try:
+            img = pygame.image.load("assets/ui/ema.png").convert_alpha()
+            self.images["portrait_ema"] = img
+            # Generate Blur
+            w, h = img.get_size()
+            small = pygame.transform.smoothscale(img, (max(1, w // 10), max(1, h // 10)))
+            self.images["portrait_ema_blur"] = pygame.transform.smoothscale(small, (w, h))
+        except (FileNotFoundError, pygame.error):
+            # Fallback
+            s = pygame.Surface((400, 600), pygame.SRCALPHA)
+            s.fill((200, 50, 50, 200)) # Reddish
+            self.images["portrait_ema"] = s
+            self.images["portrait_ema_blur"] = s
+
+        try:
+            img = pygame.image.load("assets/ui/hero.png").convert_alpha()
+            self.images["portrait_hero"] = img
+            # Generate Blur
+            w, h = img.get_size()
+            small = pygame.transform.smoothscale(img, (max(1, w // 10), max(1, h // 10)))
+            self.images["portrait_hero_blur"] = pygame.transform.smoothscale(small, (w, h))
+        except (FileNotFoundError, pygame.error):
+            s = pygame.Surface((400, 600), pygame.SRCALPHA)
+            s.fill((220, 220, 50, 200)) # Yellowish
+            self.images["portrait_hero"] = s
+            self.images["portrait_hero_blur"] = s
+
+        # ====== Frame ======
+        try:
+            self.images["select_frame"] = pygame.image.load("assets/ui/select_frame.png").convert_alpha()
+        except (FileNotFoundError, pygame.error):
+            pass
+
+        # ====== Character Select Title ======
+        try:
+            self.images["select_title"] = pygame.image.load("assets/ui/select_title.png").convert_alpha()
+        except (FileNotFoundError, pygame.error):
+            pass
 
         # 3. Option Tracking Bullet (Unique)
         try:
