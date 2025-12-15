@@ -951,6 +951,104 @@ def _draw_double_ring_pentagrams(
                 yield draw_interval
 
 
+def _spawn_breathing_spiral(
+    ctx: "TaskContext",
+    cx: float,
+    cy: float,
+    arms: int,
+    bullets_per_arm: int,
+    base_radius: float,
+    spiral_tightness: float,
+    line_offset_deg: float,
+    arrival_frames: int,
+    archetype: str,
+    rotation: float,
+    clockwise: bool,
+    draw_interval: int,
+    sync_hold_frames: int,
+) -> Generator[int, None, None]:
+    """
+    渐进生成呼吸螺旋弹幕（直线汇聚算法）。
+
+    新算法原理：
+    1. 子弹在螺旋位置逐颗出现（从内到外）
+    2. 在旋臂前方定义一条径向直线（汇聚线）
+    3. 所有子弹同时到达这条直线（速度与距离成正比）
+    4. 到达后继续以相同速度移动
+    5. 外圈子弹速度快，超越内圈，形成反向旋臂
+
+    参数：
+    - line_offset_deg: 汇聚线相对于旋臂起点的角度偏移
+    - arrival_frames: 所有子弹同时到达汇聚线的帧数
+    """
+    direction = 1 if clockwise else -1
+    frame_gap = draw_interval + 1
+    arrival_time = arrival_frames / 60.0  # 转换为秒
+
+    # 按照从内到外的顺序生成
+    for i in range(bullets_per_arm):
+        t = i / max(bullets_per_arm - 1, 1)
+
+        # 同步等待：最后一层只等1帧，第一层等最久
+        wait_for_sync = (bullets_per_arm - 1 - i) * frame_gap + 1
+
+        for arm in range(arms):
+            arm_base_angle = rotation + arm * (360 / arms)
+
+            # 螺旋位置计算
+            r = base_radius * (0.3 + t * 0.7)
+            bullet_angle_offset = direction * t * spiral_tightness
+            theta = math.radians(arm_base_angle + bullet_angle_offset)
+
+            # 子弹在螺旋上的位置
+            bullet_x = cx + r * math.cos(theta)
+            bullet_y = cy + r * math.sin(theta)
+
+            # ========== 直线汇聚算法 ==========
+            # 汇聚线角度（径向直线，在旋臂前方）
+            line_angle = arm_base_angle + direction * line_offset_deg
+
+            # 子弹相对于汇聚线的角度差
+            # 对于CW螺旋(direction=1)：
+            #   - 子弹角度 = arm_base_angle + t * spiral_tightness
+            #   - 直线角度 = arm_base_angle + line_offset_deg
+            #   - 角度差 = t * spiral_tightness - line_offset_deg
+            angle_diff_deg = bullet_angle_offset - direction * line_offset_deg
+            angle_diff_rad = math.radians(angle_diff_deg)
+
+            # 子弹到汇聚线的垂直距离
+            # 距离 = r * |sin(角度差)|
+            distance = r * abs(math.sin(angle_diff_rad))
+
+            # 速度 = 距离 / 时间（所有子弹同时到达）
+            speed = distance / arrival_time if arrival_time > 0 else 0
+
+            # 运动方向：所有子弹朝同一方向移动！
+            # 对于CW螺旋：子弹朝CCW方向移动（line_angle - 90）
+            # 对于CCW螺旋：子弹朝CW方向移动（line_angle + 90）
+            # 这样外圈子弹速度快，到达汇聚线后继续超越内圈，形成反向旋臂
+            if clockwise:
+                movement_angle = line_angle - 90  # CCW方向
+            else:
+                movement_angle = line_angle + 90  # CW方向
+
+            # 构建运动程序：
+            # 1. 等待所有子弹生成完毕
+            # 2. 保持形状
+            # 3. 直接以计算好的速度移动（无需加速）
+            motion = (MotionBuilder(speed=0, angle=movement_angle)
+                .wait(wait_for_sync)
+                .wait(sync_hold_frames)
+                .set_speed(speed)  # 直接设置速度
+                .build())
+
+            ctx.fire(bullet_x, bullet_y, 0, movement_angle, archetype, motion=motion)
+
+        # 每层生成完后等待
+        if i < bullets_per_arm - 1:
+            yield draw_interval
+
+
 def phase3_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
     """
     Phase 3: 符卡「双重星环」
@@ -992,23 +1090,71 @@ def phase3_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
         yield 120
 
 
+def phase4_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
+    """
+    Phase 4: 奇迹「六月飞雪」
+
+    "八坂の神風" 风格弹幕：
+    - 基础形状：阿基米德螺线（Boss持续向外发射子弹）
+    - 动态效果：发射角度以正弦函数摇摆，产生"神风"般的变化
+    - 在摇摆两端（sin 波峰/波谷）旋转变慢，中间变快
+    - 越往后摇摆幅度越大（振幅随时间增加）
+    """
+    # 弹幕参数（参考 Lunatic 难度）
+    NUM_ARMS = 12                      # 螺旋臂数量
+    BULLET_SPEED = 180.0               # 子弹速度 (px/s)
+    BASE_AMPLITUDE = 60.0              # 初始摇摆振幅（度）
+    AMPLITUDE_GROWTH = 0.05            # 振幅增长速度（度/帧）
+    MAX_AMPLITUDE = 120.0              # 最大振幅（度）
+    FREQUENCY = 0.08                   # 摇摆频率（每帧）
+    BASE_ANGULAR_VELOCITY = 2.0        # 基础旋转速度（度/帧）
+    FIRE_INTERVAL = 3                  # 发射间隔（帧）
+
+    frame = 0
+    base_angle = 0.0
+    current_amplitude = BASE_AMPLITUDE
+
+    while True:
+        x, y = ctx.owner_pos()
+
+        # 1. 计算摇摆角度（正弦函数，振幅逐渐增大）
+        swing_angle = current_amplitude * math.sin(FREQUENCY * frame)
+
+        # 2. 计算总发射角度
+        total_angle = base_angle + swing_angle
+
+        # 3. 发射多条螺旋臂
+        for k in range(NUM_ARMS):
+            fire_angle = total_angle + k * (360.0 / NUM_ARMS)
+            ctx.fire(x, y, BULLET_SPEED, fire_angle, "bullet_small")
+
+        # 4. 更新状态
+        base_angle += BASE_ANGULAR_VELOCITY
+        # 振幅逐渐增大，但不超过最大值
+        current_amplitude = min(current_amplitude + AMPLITUDE_GROWTH, MAX_AMPLITUDE)
+        frame += 1
+
+        yield FIRE_INTERVAL
+
+
 # ============ Boss 主脚本（纯脚本驱动） ============
 
 def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
     """
     Stage 1 Boss 完整脚本（纯脚本驱动模式）。
-    
+
     控制 Boss 的整个战斗流程：
     - 入场动画
     - Phase 1: 非符「万华镜」
-    - Phase 2: 符卡「银河涡流」
-    - Phase 3: 符卡「星辰万象」
+    - Phase 2: 奇迹「摩西开海」
+    - Phase 3: 幻符「双重星环」
+    - Phase 4: 奇迹「六月飞雪」
     - 结束处理
     """
     # 入场：移动到战斗位置
-    ctx.update_boss_hud(phases_remaining=3, timer=30.0)
+    ctx.update_boss_hud(phases_remaining=4, timer=30.0)
     yield from ctx.move_to(ctx.state.width / 2, 120, frames=180)
-    
+
     # 移动参数（匹配原 BossMovementState）
     # idle_time: 1.5-2.5s = 90-150 帧
     # move_duration: 0.5-0.8s = 30-48 帧
@@ -1019,9 +1165,9 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
         move_range_x=60.0,
         move_range_y=(80.0, 140.0),
     )
-    
+
     # === Phase 1: 非符「万华镜」 ===
-    ctx.update_boss_hud(phases_remaining=3)
+    ctx.update_boss_hud(phases_remaining=4)
     yield from ctx.run_phase(
         pattern=phase1_nonspell,
         timeout_seconds=30.0,
@@ -1034,7 +1180,7 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
     yield from ctx.move_to(ctx.state.width / 2, 100, frames=30)
     
     # === Phase 2: 奇迹「摩西开海」 ===
-    ctx.update_boss_hud(phases_remaining=2)
+    ctx.update_boss_hud(phases_remaining=3)
     yield from ctx.run_spell_card(
         name="奇迹「摩西开海」",
         bonus=100000,
@@ -1049,7 +1195,7 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
     yield from ctx.move_to(ctx.state.width / 2, 100, frames=30)
     
     # === Phase 3: 符卡「双重星环」 ===
-    ctx.update_boss_hud(phases_remaining=1)
+    ctx.update_boss_hud(phases_remaining=2)
     yield from ctx.run_spell_card(
         name="幻符「双重星环」",
         bonus=150000,
@@ -1058,7 +1204,22 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
         hp=1200,
         **move_params,
     )
-    
+
+    # 阶段转换
+    yield from ctx.phase_transition(frames=60)
+    yield from ctx.move_to(ctx.state.width / 2, ctx.state.height / 3, frames=30)
+
+    # === Phase 4: 奇迹「六月飞雪」 ===
+    ctx.update_boss_hud(phases_remaining=1)
+    yield from ctx.run_spell_card(
+        name="奇迹「六月飞雪」",
+        bonus=200000,
+        pattern=phase4_spellcard,
+        timeout_seconds=60.0,
+        hp=1500,
+        move_interval=None,  # Boss保持静止
+    )
+
     # Boss 战结束
     ctx.kill_boss()
 
@@ -1118,7 +1279,7 @@ def spawn_stage1_boss(state: "GameState", x: float, y: float) -> Actor:
     # HUD data
     boss.add(BossHudData(
         boss_name="小妖精头目",
-        phases_remaining=3,
+        phases_remaining=4,
         visible=True,
     ))
     
