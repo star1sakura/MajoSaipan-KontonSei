@@ -325,6 +325,231 @@ def fire_butterfly(
         ctx.fire(cx + rel_x, cy + rel_y, speed, angle_out, archetype)
 
 
+# ============ 第五阶段专用弹幕函数 ============
+
+def fire_triple_layer_fan(
+    ctx: "TaskContext",
+    x: float,
+    y: float,
+    base_angle: float,
+    count: int = 7,
+    spread: float = 60.0,
+    fly_speeds: tuple = (120, 180, 240),
+    final_speeds: tuple = (120, 180, 240),
+    archetype: str = "bullet_small",
+    fly_frames: int = 30,
+    hover_frames: int = 180,
+) -> None:
+    """
+    发射三层扇形弹幕（飞行成形 → 悬停 → 自机狙）。
+
+    子弹发射后先以扇形飞出形成形状（三层速度不同形成厚度），
+    然后悬停，最后转向玩家飞行。
+
+    Args:
+        ctx: TaskContext
+        x, y: 发射位置
+        base_angle: 扇形中心角度（度）
+        count: 每层子弹数量
+        spread: 扇形展开角度（度）
+        fly_speeds: 三层飞行成形时的速度 (内层, 中层, 外层)
+        final_speeds: 三层自机狙时的最终速度 (内层, 中层, 外层)
+        archetype: 子弹原型
+        fly_frames: 飞行成形的帧数（约0.5秒）
+        hover_frames: 悬停帧数（约1秒）
+    """
+    from model.scripting.motion import MotionBuilder
+
+    for layer_idx, (fly_speed, final_speed) in enumerate(zip(fly_speeds, final_speeds)):
+        for i in range(count):
+            if count > 1:
+                angle = base_angle - spread / 2 + (spread * i / (count - 1))
+            else:
+                angle = base_angle
+
+            # 构建运动程序：飞行成形 → 停止 → 悬停 → 自机狙 → 加速
+            motion = (MotionBuilder(speed=fly_speed, angle=angle)
+                .wait(fly_frames)                    # 飞行成形（三层速度不同，形成厚度）
+                .set_speed(0)                        # 停下来
+                .wait(hover_frames)                  # 悬停
+                .aim_player()                        # 转向玩家
+                .accelerate_to(final_speed, 15)     # 平滑加速
+                .build())
+
+            ctx.fire(x, y, fly_speed, angle, archetype, motion=motion)
+
+
+def fire_bouncing_pentagrams(
+    ctx: "TaskContext",
+    cx: float,
+    cy: float,
+    num_stars: int = 4,
+    radius: float = 60.0,
+    bullets_per_edge: int = 8,
+    move_speed: float = 100.0,
+    hold_frames: int = 60,
+    scatter_speed: float = 120.0,
+    scatter_frames: int = 30,
+    archetype: str = "bullet_medium",
+    max_bounces: int = 1,
+    angle_spread: float = 50.0,
+) -> None:
+    """
+    发射可反弹的五角星弹幕。
+
+    在屏幕中心发射多个五角星，子弹碰到边界会反弹指定次数。
+    边散开时有角度和速度梯度。
+
+    Args:
+        ctx: TaskContext
+        cx, cy: 发射中心位置
+        num_stars: 五角星数量
+        radius: 每个五角星的半径
+        bullets_per_edge: 每条边的子弹数
+        move_speed: 整体移动速度
+        hold_frames: 保持形状的帧数
+        scatter_speed: 散开时的基础速度
+        scatter_frames: 散开加速的帧数
+        archetype: 子弹原型
+        max_bounces: 最大反弹次数
+        angle_spread: 角度梯度范围（度）
+    """
+    from model.components import BulletBounce
+
+    # 每个五角星朝不同方向飞出（均匀分布）
+    for star_idx in range(num_stars):
+        # 五角星飞出方向（均匀分布在360度）
+        move_angle = star_idx * (360.0 / num_stars)
+        # 五角星旋转角度（让每个星星角度不同）
+        rotation = star_idx * (360.0 / num_stars / 2)
+
+        # 计算 5 个顶点位置
+        vertices = []
+        for k in range(5):
+            angle_deg = rotation + k * 72 - 90  # -90 让第一个顶点朝上
+            angle_rad = math.radians(angle_deg)
+            vx = radius * math.cos(angle_rad)
+            vy = radius * math.sin(angle_rad)
+            vertices.append((vx, vy))
+
+        # 五角星的边连接顺序：0→2→4→1→3→0
+        edge_indices = [(0, 2), (2, 4), (4, 1), (1, 3), (3, 0)]
+
+        for start_idx, end_idx in edge_indices:
+            start_vx, start_vy = vertices[start_idx]
+            end_vx, end_vy = vertices[end_idx]
+
+            edge_dx = end_vx - start_vx
+            edge_dy = end_vy - start_vy
+
+            # 计算边的中点（用于确定散开方向）
+            mid_x = (start_vx + end_vx) / 2
+            mid_y = (start_vy + end_vy) / 2
+            base_scatter_angle = math.degrees(math.atan2(mid_y, mid_x))
+
+            for j in range(bullets_per_edge):
+                t = j / max(bullets_per_edge - 1, 1)
+                rel_x = start_vx + t * edge_dx
+                rel_y = start_vy + t * edge_dy
+
+                bullet_x = cx + rel_x
+                bullet_y = cy + rel_y
+
+                # 角度梯度：从 -angle_spread/2 到 +angle_spread/2 的扇形展开
+                final_scatter_angle = base_scatter_angle + (t - 0.5) * angle_spread
+
+                # 速度梯度：从0.7x到1.3x的速度变化，形成倾斜弹幕墙
+                speed_factor = 0.7 + t * 0.6
+                final_scatter_speed = scatter_speed * speed_factor
+
+                # 创建运动程序
+                motion = (MotionBuilder(speed=move_speed, angle=move_angle)
+                    .wait(hold_frames)
+                    .set_angle(final_scatter_angle)
+                    .accelerate_to(final_scatter_speed, scatter_frames)
+                    .build())
+
+                # 发射子弹
+                bullet = ctx.fire(bullet_x, bullet_y, move_speed, move_angle, archetype, motion=motion)
+                # 添加反弹组件
+                bullet.add(BulletBounce(max_bounces=max_bounces, bounce_count=0))
+
+
+def _fly_and_fire_phase5(
+    ctx: "TaskContext",
+    start_x: float,
+    start_y: float,
+    end_x: float,
+    end_y: float,
+    fly_speed: float = 280.0,
+    fire_interval: int = 8,
+    fan_count: int = 7,
+    fan_spread: float = 60.0,
+    layer_speeds: tuple = (120, 180, 240),
+) -> "Generator[int, None, None]":
+    """
+    Boss从起点飞到终点，飞行时发射随机方向的三层扇形弹幕。
+
+    Args:
+        ctx: TaskContext
+        start_x, start_y: 起点位置
+        end_x, end_y: 终点位置
+        fly_speed: 飞行速度 (px/s)
+        fire_interval: 发射间隔（帧）
+        fan_count: 每层子弹数
+        fan_spread: 扇形角度
+        layer_speeds: 三层速度
+    """
+    from model.components import Position
+
+    # 获取Boss位置组件
+    pos = ctx.owner.get(Position)
+    if pos is None:
+        return
+
+    # 瞬移到起点
+    pos.x = start_x
+    pos.y = start_y
+
+    # 计算飞行参数
+    dx = end_x - start_x
+    dy = end_y - start_y
+    distance = math.sqrt(dx * dx + dy * dy)
+
+    # 计算飞行帧数（基于速度，60fps）
+    fly_frames = max(1, int(distance / fly_speed * 60))
+
+    step_x = dx / fly_frames
+    step_y = dy / fly_frames
+
+    fire_timer = 0
+
+    for _ in range(fly_frames):
+        # 更新位置
+        pos.x += step_x
+        pos.y += step_y
+
+        # 发射弹幕
+        fire_timer -= 1
+        if fire_timer <= 0:
+            # 随机方向
+            random_angle = ctx.random_range(0, 360)
+            fire_triple_layer_fan(
+                ctx, pos.x, pos.y, random_angle,
+                count=fan_count,
+                spread=fan_spread,
+                fly_speeds=layer_speeds,
+                final_speeds=layer_speeds,
+            )
+            fire_timer = fire_interval
+
+        yield 1
+
+    # 确保到达终点
+    pos.x = end_x
+    pos.y = end_y
+
+
 # ============ Boss Phase Tasks ============
 
 def _draw_ten_pentagrams(
@@ -1094,9 +1319,9 @@ def phase4_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
     """
     Phase 4: 奇迹「六月飞雪」
 
-    "八坂の神風" 风格弹幕：
+    "波与粒的界限" 风格弹幕：
     - 基础形状：阿基米德螺线（Boss持续向外发射子弹）
-    - 动态效果：发射角度以正弦函数摇摆，产生"神风"般的变化
+    - 动态效果：发射角度以正弦函数摇摆
     - 在摇摆两端（sin 波峰/波谷）旋转变慢，中间变快
     - 越往后摇摆幅度越大（振幅随时间增加）
     """
@@ -1106,8 +1331,8 @@ def phase4_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
     BASE_AMPLITUDE = 60.0              # 初始摇摆振幅（度）
     AMPLITUDE_GROWTH = 0.05            # 振幅增长速度（度/帧）
     MAX_AMPLITUDE = 120.0              # 最大振幅（度）
-    FREQUENCY = 0.08                   # 摇摆频率（每帧）
-    BASE_ANGULAR_VELOCITY = 2.0        # 基础旋转速度（度/帧）
+    FREQUENCY = 0.10                   # 摇摆频率（每帧）
+    BASE_ANGULAR_VELOCITY = 4.0        # 基础旋转速度（度/帧）
     FIRE_INTERVAL = 3                  # 发射间隔（帧）
 
     frame = 0
@@ -1137,6 +1362,145 @@ def phase4_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
         yield FIRE_INTERVAL
 
 
+def _fire_pentagrams_at_boss(ctx: "TaskContext") -> "Generator[int, None, None]":
+    """
+    辅助函数：Boss移动到当前位置附近并发射反弹五角星。
+
+    在当前Boss位置发射4个可反弹五角星，然后短暂等待。
+    """
+    x, y = ctx.owner_pos()
+
+    # 发射4个可反弹五角星
+    fire_bouncing_pentagrams(
+        ctx,
+        cx=x,
+        cy=y,
+        num_stars=4,
+        radius=60.0,
+        bullets_per_edge=8,
+        move_speed=100.0,
+        hold_frames=60,
+        scatter_speed=120.0,
+        scatter_frames=30,
+        archetype="bullet_medium",
+        max_bounces=1,
+    )
+
+    # 短暂等待让星星飞出
+    yield 30
+
+
+def phase5_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
+    """
+    Phase 5: 梦想封印「瞬」
+
+    Boss沿屏幕边缘飞行，飞行时发射方向随机的三层扇形弹幕。
+    每完成一次"左→右"+"右→左"的飞行循环，发射4个可反弹五角星。
+
+    移动路径循环执行：
+    步骤1: 左侧飞向右上（2条平行线）
+    步骤2: 右侧飞向左上（3条平行线）
+    → 发射五角星
+    步骤3: 左侧飞向右上（3条平行线）
+    步骤4: 右侧飞向左上（2条平行线）
+    → 发射五角星
+    """
+    screen_w = ctx.state.width
+    screen_h = ctx.state.height
+
+    # 弹幕参数
+    FLY_SPEED = 280.0           # Boss飞行速度 (px/s)
+    FIRE_INTERVAL = 8           # 发射间隔（帧）
+    FAN_COUNT = 7               # 每层子弹数
+    FAN_SPREAD = 60.0           # 扇形角度
+    LAYER_SPEEDS = (120, 180, 240)  # 内/中/外层速度
+
+    while True:
+        # ===== 步骤1: 左侧飞向右上（2条平行线）=====
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=0, start_y=screen_h / 2,
+            end_x=screen_w, end_y=0,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=0, start_y=screen_h * 0.8,
+            end_x=screen_w, end_y=screen_h / 2,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+
+        # ===== 步骤2: 右侧飞向左上（3条平行线，镜像角度）=====
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=screen_w, start_y=screen_h / 3,
+            end_x=0, end_y=0,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=screen_w, start_y=screen_h * 2 / 3,
+            end_x=0, end_y=screen_h / 3,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=screen_w, start_y=screen_h,
+            end_x=0, end_y=screen_h * 2 / 3,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+
+        # ★ 完成步骤1(左→右) + 步骤2(右→左)，发射五角星
+        yield from _fire_pentagrams_at_boss(ctx)
+
+        # ===== 步骤3: 左侧飞向右上（3条平行线）=====
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=0, start_y=screen_h / 3,
+            end_x=screen_w, end_y=0,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=0, start_y=screen_h * 2 / 3,
+            end_x=screen_w, end_y=screen_h / 3,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=0, start_y=screen_h,
+            end_x=screen_w, end_y=screen_h * 2 / 3,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+
+        # ===== 步骤4: 右侧飞向左上（2条平行线）=====
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=screen_w, start_y=screen_h / 2,
+            end_x=0, end_y=0,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+        yield from _fly_and_fire_phase5(
+            ctx,
+            start_x=screen_w, start_y=screen_h * 0.8,
+            end_x=0, end_y=screen_h / 2,
+            fly_speed=FLY_SPEED, fire_interval=FIRE_INTERVAL,
+            fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
+        )
+
+        # ★ 完成步骤3(左→右) + 步骤4(右→左)，发射五角星
+        yield from _fire_pentagrams_at_boss(ctx)
+
+
 # ============ Boss 主脚本（纯脚本驱动） ============
 
 def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
@@ -1149,10 +1513,11 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
     - Phase 2: 奇迹「摩西开海」
     - Phase 3: 幻符「双重星环」
     - Phase 4: 奇迹「六月飞雪」
+    - Phase 5: 梦想封印「瞬」
     - 结束处理
     """
     # 入场：移动到战斗位置
-    ctx.update_boss_hud(phases_remaining=4, timer=30.0)
+    ctx.update_boss_hud(phases_remaining=5, timer=30.0)
     yield from ctx.move_to(ctx.state.width / 2, 120, frames=180)
 
     # 移动参数（匹配原 BossMovementState）
@@ -1167,20 +1532,20 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
     )
 
     # === Phase 1: 非符「万华镜」 ===
-    ctx.update_boss_hud(phases_remaining=4)
+    ctx.update_boss_hud(phases_remaining=5)
     yield from ctx.run_phase(
         pattern=phase1_nonspell,
         timeout_seconds=30.0,
         hp=800,
         **move_params,
     )
-    
+
     # 阶段转换
     yield from ctx.phase_transition(frames=60)
     yield from ctx.move_to(ctx.state.width / 2, 100, frames=30)
-    
+
     # === Phase 2: 奇迹「摩西开海」 ===
-    ctx.update_boss_hud(phases_remaining=3)
+    ctx.update_boss_hud(phases_remaining=4)
     yield from ctx.run_spell_card(
         name="奇迹「摩西开海」",
         bonus=100000,
@@ -1189,13 +1554,13 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
         hp=1000,
         **move_params,
     )
-    
+
     # 阶段转换
     yield from ctx.phase_transition(frames=60)
     yield from ctx.move_to(ctx.state.width / 2, 100, frames=30)
-    
+
     # === Phase 3: 符卡「双重星环」 ===
-    ctx.update_boss_hud(phases_remaining=2)
+    ctx.update_boss_hud(phases_remaining=3)
     yield from ctx.run_spell_card(
         name="幻符「双重星环」",
         bonus=150000,
@@ -1210,7 +1575,7 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
     yield from ctx.move_to(ctx.state.width / 2, ctx.state.height / 3, frames=30)
 
     # === Phase 4: 奇迹「六月飞雪」 ===
-    ctx.update_boss_hud(phases_remaining=1)
+    ctx.update_boss_hud(phases_remaining=2)
     yield from ctx.run_spell_card(
         name="奇迹「六月飞雪」",
         bonus=200000,
@@ -1218,6 +1583,21 @@ def stage1_boss_script(ctx: "TaskContext") -> Generator[int, None, None]:
         timeout_seconds=60.0,
         hp=1500,
         move_interval=None,  # Boss保持静止
+    )
+
+    # 阶段转换
+    yield from ctx.phase_transition(frames=60)
+    yield from ctx.move_to(0, ctx.state.height / 2, frames=30)  # 移动到左侧中间（第五阶段起点）
+
+    # === Phase 5: 梦想封印「瞬」 ===
+    ctx.update_boss_hud(phases_remaining=1)
+    yield from ctx.run_spell_card(
+        name="梦想封印「瞬」",
+        bonus=250000,
+        pattern=phase5_spellcard,
+        timeout_seconds=60.0,
+        hp=1800,
+        move_interval=None,  # 禁用自动移动，使用脚本控制
     )
 
     # Boss 战结束
@@ -1279,7 +1659,7 @@ def spawn_stage1_boss(state: "GameState", x: float, y: float) -> Actor:
     # HUD data
     boss.add(BossHudData(
         boss_name="小妖精头目",
-        phases_remaining=4,
+        phases_remaining=5,
         visible=True,
     ))
     
