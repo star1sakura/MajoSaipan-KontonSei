@@ -49,9 +49,13 @@ DEFAULT_ENEMY_SPRITE = ("enemy_basic", -16, -16)
 
 
 # ====== 敌人子弹类型 → 精灵映射表 ======
+# ====== 敌人子弹类型 → 精灵映射表 ======
 ENEMY_BULLET_SPRITES: dict[EnemyBulletKind, tuple[str, int, int]] = {
     # 类型: (精灵名, X偏移, Y偏移)
     EnemyBulletKind.BASIC: ("enemy_bullet_basic", -4, -4),
+    # Boss 子弹 (20x20 -> Center -10, -10)
+    EnemyBulletKind.BOSS_BLUE: ("boss_bullet_blue", -10, -10),
+    EnemyBulletKind.BOSS_RED: ("boss_bullet_red", -10, -10),
 }
 DEFAULT_ENEMY_BULLET_SPRITE = ("enemy_bullet_basic", -4, -4)
 

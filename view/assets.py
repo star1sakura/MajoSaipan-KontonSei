@@ -449,6 +449,7 @@ class Assets:
         self._load_enemy_sprites()
         self._load_boss_sprites()
         self._load_items()
+        self._load_bullets()
         self._load_vfx()
 
     def get_image(self, name: str) -> pygame.Surface:
@@ -630,3 +631,24 @@ class Assets:
                 color = (0, 0, 255) if "small" in name else (255, 255, 0)
                 pygame.draw.circle(fallback, color, (size[0]//2, size[1]//2), size[0]//2)
                 self.images[name] = fallback
+
+    def _load_bullets(self) -> None:
+        """Load additional bullet sprites."""
+        # Boss Bullets
+        bullets = [
+            ("boss_bullet_blue", "assets/sprites/bullets/boss_bullet_small.png", (20, 20)),
+            ("boss_bullet_red", "assets/sprites/bullets/boss_bullet_large.png", (20, 20)),
+        ]
+        
+        for name, path, size in bullets:
+            try:
+                img = pygame.image.load(path).convert_alpha()
+                scaled = pygame.transform.smoothscale(img, size)
+                self.images[name] = scaled
+                print(f"Loaded bullet: {path} -> Scaled to {size}")
+            except (FileNotFoundError, pygame.error) as e:
+                print(f"Failed to load bullet {path}: {e}")
+                surf = pygame.Surface(size, pygame.SRCALPHA)
+                color = (0, 0, 255) if "blue" in name else (255, 0, 0)
+                pygame.draw.circle(surf, color, (size[0]//2, size[1]//2), size[0]//2 - 2)
+                self.images[name] = surf

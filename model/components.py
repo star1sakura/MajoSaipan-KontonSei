@@ -278,6 +278,8 @@ class EnemyKindTag:
 class EnemyBulletKind(Enum):
     """敌人子弹种类 - View 层根据此枚举查表获取精灵"""
     BASIC = auto()
+    BOSS_BLUE = auto()
+    BOSS_RED = auto()
     # 未来可扩展更多类型，如 LARGE, AIMED, LASER 等
 
 

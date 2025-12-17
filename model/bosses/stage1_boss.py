@@ -336,7 +336,7 @@ def fire_triple_layer_fan(
     spread: float = 60.0,
     fly_speeds: tuple = (120, 180, 240),
     final_speeds: tuple = (120, 180, 240),
-    archetype: str = "bullet_small",
+    archetype: str = "boss_blue",
     fly_frames: int = 30,
     hover_frames: int = 180,
 ) -> None:
@@ -731,7 +731,7 @@ def phase1_nonspell(ctx: "TaskContext") -> Generator[int, None, None]:
             fly_frames=40,            # 整体飞行40帧
             hover_frames=30,          # 第二次悬停30帧
             edge_scatter_speed=100,   # 每条边散开速度
-            archetype="bullet_small",
+            archetype="boss_blue",
             base_rotation=wave * 18,  # 每波旋转18度
         )
         
@@ -875,7 +875,7 @@ def phase2_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
                 stream['timer'] -= 1
                 if stream['timer'] <= 0:
                     # 发射子弹
-                    ctx.fire(stream['x'], stream['y'], 250, stream['angle'], "bullet_small")
+                    ctx.fire(stream['x'], stream['y'], 250, stream['angle'], "boss_blue")
                     stream['remaining'] -= 1
                     stream['timer'] = stream['interval']
                     
@@ -920,7 +920,7 @@ def phase2_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
                 if aim_cycle < aim_duration and aim_cycle % 3 == 0:
                     bx, by = ctx.owner_pos()
                     speed = 250
-                    ctx.fire_aimed(bx, by, speed, "bullet_medium")
+                    ctx.fire_aimed(bx, by, speed, "boss_red")
             
             time_counter += 1
             yield 1
@@ -1306,8 +1306,8 @@ def phase3_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
             scatter_speed=160,
             hover_frames=30,
             edge_scatter_speed=100,
-            archetype_large="bullet_medium", # 大星星用中弹
-            archetype_small="bullet_small",  # 小星星用小弹
+            archetype_large="boss_red", # 大星星用 Boss Red
+            archetype_small="boss_blue",  # 小星星用 Boss Blue
             base_rotation=wave * 12
         )
         
@@ -1351,7 +1351,7 @@ def phase4_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
         # 3. 发射多条螺旋臂
         for k in range(NUM_ARMS):
             fire_angle = total_angle + k * (360.0 / NUM_ARMS)
-            ctx.fire(x, y, BULLET_SPEED, fire_angle, "bullet_small")
+            ctx.fire(x, y, BULLET_SPEED, fire_angle, "boss_blue")
 
         # 4. 更新状态
         base_angle += BASE_ANGULAR_VELOCITY
@@ -1382,7 +1382,7 @@ def _fire_pentagrams_at_boss(ctx: "TaskContext") -> "Generator[int, None, None]"
         hold_frames=60,
         scatter_speed=120.0,
         scatter_frames=30,
-        archetype="bullet_medium",
+        archetype="boss_red",
         max_bounces=1,
     )
 
