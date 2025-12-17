@@ -576,6 +576,9 @@ class LaserState:
     # 旋转参数
     angular_velocity: float = 0.0   # 角速度（度/帧）
 
+    # 渲染参数
+    color: tuple[int, int, int] = (255, 255, 255)  # 激光颜色 (R, G, B)
+
 
 @dataclass
 class LaserTag:

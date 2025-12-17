@@ -773,7 +773,7 @@ def phase2_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
     lasers_left = []
     lasers_right = []
     
-    num_lasers = 40  # 增加激光数量，使屏障更密集
+    num_lasers = 64  # 增加数量使波浪更平滑
     step_y = screen_h / num_lasers
     
     # 初始偏移，让激光在屏幕外
@@ -783,19 +783,28 @@ def phase2_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
     
     # 初始化激光
     for i in range(num_lasers):
-        y_pos = i * step_y + 10
+        y_pos = i * step_y + step_y / 2
         
+        # 计算颜色梯度：深蓝 -> 青 -> 白 -> 青 -> 深蓝 (模拟水光泽)
+        # t: 0 -> 1 -> 0
+        t = math.sin((i / num_lasers) * math.pi)
+        r = int(20 + 60 * t)
+        g = int(50 + 150 * t)
+        b = int(180 + 75 * t)
+        wave_color = (min(255, r), min(255, g), min(255, b))
+
         # 左侧激光（从左边缘向右发射）
         l1 = ctx.fire_laser(
             x=-entry_offset_x,
             y=y_pos,
             angle=0,  # 向右
             length=100, # 初始长度
-            width=12.0,
+            width=15.0, # 增加宽度以确保重叠
             laser_type="straight", 
             warmup_frames=0, # 无预热
             duration_frames=6000, # 持续很久
-            can_reflect=False
+            can_reflect=False,
+            color=wave_color
         )
         lasers_left.append((l1, y_pos))
         
@@ -805,11 +814,12 @@ def phase2_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
             y=y_pos,
             angle=180, # 向左
             length=100,
-            width=12.0,
+            width=15.0,
             laser_type="straight",
             warmup_frames=0, # 无预热
             duration_frames=6000,
-            can_reflect=False
+            can_reflect=False,
+            color=wave_color
         )
         lasers_right.append((l2, y_pos))
 
