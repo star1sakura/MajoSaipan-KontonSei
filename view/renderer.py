@@ -12,6 +12,7 @@ from model.components import (
     EnemyKindTag, EnemyKind,
     EnemyBulletKindTag, EnemyBulletKind,
     LaserTag, LaserState, LaserType,
+    PlayerDamageState,
 )
 from model.game_config import CollectConfig
 
@@ -84,6 +85,9 @@ class Renderer:
         
         # 动画状态缓存：{ id(actor): {"state": str, "frame_index": int, "timer": float} }
         self.anim_cache = {}
+        
+        # 樱花 VFX 状态
+        self.sakura_rotation = 0.0
 
     def render(self, state: GameState, flip: bool = True) -> None:
         GAME_WIDTH = 480
@@ -162,6 +166,9 @@ class Renderer:
             layer_normal.append(actor)
             
         # 绘制顺序
+        # 先绘制樱花（在角色背后）
+        self._render_sakura(state)
+        
         for actor in layer_normal:
             self._draw_actor(actor, state)
             
@@ -607,6 +614,36 @@ class Renderer:
             # rect.center = (pos[0], pos[1])
             rect = rotated_img.get_rect(center=(int(pos[0]), int(pos[1])))
             self.screen.blit(rotated_img, rect)
+
+    def _render_sakura(self, state: GameState) -> None:
+        """绘制无敌樱花 VFX（带旋转效果，在角色背后）。"""
+        player = state.get_player()
+        if not player:
+            return
+        
+        dmg_state = player.get(PlayerDamageState)
+        pos = player.get(Position)
+        if not (dmg_state and pos):
+            return
+        
+        # 只有在无敌时才显示樱花
+        if dmg_state.invincible_timer <= 0:
+            return
+        
+        # 获取樱花图片
+        sakura_img = self.assets.images.get("sakura")
+        if not sakura_img:
+            return
+        
+        # 更新旋转角度
+        dt = 1.0 / 60.0  # 假设 60 FPS
+        rotation_speed = 120.0  # 度/秒
+        self.sakura_rotation = (self.sakura_rotation + rotation_speed * dt) % 360
+        
+        # 旋转并绘制
+        rotated = pygame.transform.rotate(sakura_img, self.sakura_rotation)
+        rect = rotated.get_rect(center=(int(pos.x), int(pos.y)))
+        self.screen.blit(rotated, rect)
 
     def _render_boss_hud(self, state: GameState) -> None:
         """渲染 Boss HUD：血条、计时器、符卡名、剩余阶段星星。"""

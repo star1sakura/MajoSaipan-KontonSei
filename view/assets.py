@@ -740,6 +740,18 @@ class Assets:
             pygame.draw.rect(s, (255, 255, 255), (0, 0, 480, 200), 5)
             self.images["boss_cutin"] = s
 
+        # Sakura (Player Invincibility) - Single image
+        path = "assets/sprites/vfx/sakura.png"
+        try:
+           img = pygame.image.load(path).convert_alpha()
+           # Scale to target size
+           target_size = (120, 120)
+           scaled = pygame.transform.smoothscale(img, target_size)
+           self.images["sakura"] = scaled
+           print(f"Loaded VFX: {path} -> Scaled to {target_size}")
+        except (FileNotFoundError, pygame.error) as e:
+           print(f"Failed to load VFX {path}: {e}")
+
     def _load_items(self) -> None:
         """Load item sprites."""
         # Item definitions: (name, filename, target_size)
