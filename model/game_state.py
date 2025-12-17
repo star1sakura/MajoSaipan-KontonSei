@@ -474,15 +474,18 @@ def spawn_item(
     item.add(ItemTag())
 
     if item_type == ItemType.POWER:
-        sprite_name = "item_power"
+        sprite_name = "item_exp_small"
+        off = -12
     elif item_type == ItemType.POINT:
-        sprite_name = "item_point"
+        sprite_name = "item_exp_large"
+        off = -16
     else:
-        sprite_name = "item_power"
+        sprite_name = "item_exp_small"
+        off = -12
 
     item.add(Collider(radius=pickup_radius, layer=CollisionLayer.ITEM, mask=CollisionLayer.PLAYER))
 
-    item.add(SpriteInfo(name=sprite_name, offset_x=-8, offset_y=-8))
+    item.add(SpriteInfo(name=sprite_name, offset_x=off, offset_y=off))
 
     item.add(Lifetime(time_left=lifetime))
 

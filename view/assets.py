@@ -448,6 +448,7 @@ class Assets:
 
         self._load_enemy_sprites()
         self._load_boss_sprites()
+        self._load_items()
         self._load_vfx()
 
     def get_image(self, name: str) -> pygame.Surface:
@@ -606,3 +607,26 @@ class Assets:
            print(f"Loaded VFX: {path} -> {len(frames)} frames (Scaled to {target_w}x{target_h})")
         except (FileNotFoundError, pygame.error) as e:
            print(f"Failed to load VFX {path}: {e}")
+
+    def _load_items(self) -> None:
+        """Load item sprites."""
+        # Item definitions: (name, filename, target_size)
+        items = [
+            ("item_exp_small", "assets/sprites/items/item_exp_small.png", (24, 24)),
+            ("item_exp_large", "assets/sprites/items/item_exp_large.png", (32, 32)),
+        ]
+        
+        for name, path, size in items:
+            try:
+                img = pygame.image.load(path).convert_alpha()
+                # Smoothscale to target size
+                scaled = pygame.transform.smoothscale(img, size)
+                self.images[name] = scaled
+                print(f"Loaded item: {path} -> Scaled to {size}")
+            except (FileNotFoundError, pygame.error) as e:
+                print(f"Failed to load item {path}: {e}")
+                # Fallback: Simple colored circle
+                fallback = pygame.Surface(size, pygame.SRCALPHA)
+                color = (0, 0, 255) if "small" in name else (255, 255, 0)
+                pygame.draw.circle(fallback, color, (size[0]//2, size[1]//2), size[0]//2)
+                self.images[name] = fallback
