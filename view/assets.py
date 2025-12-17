@@ -745,7 +745,7 @@ class Assets:
         # Item definitions: (name, filename, target_size)
         items = [
             ("item_exp_small", "assets/sprites/items/item_exp_small.png", (24, 24)),
-            ("item_exp_large", "assets/sprites/items/item_exp_large.png", (32, 32)),
+            ("item_exp_large", "assets/sprites/items/item_exp_large.png", (24, 24)),
         ]
         
         for name, path, size in items:
@@ -767,7 +767,7 @@ class Assets:
         """Load additional bullet sprites."""
         # Boss Bullets
         bullets = [
-            ("boss_bullet_blue", "assets/sprites/bullets/boss_bullet_small.png", (20, 20)),
+            ("boss_bullet_blue", "assets/sprites/bullets/boss_bullet_small.png", (14, 14)),
             ("boss_bullet_red", "assets/sprites/bullets/boss_bullet_large.png", (20, 20)),
         ]
         
@@ -792,6 +792,9 @@ class Assets:
             ("pause", "assets/sfx/pause.wav"),
             ("item_get", "assets/sfx/item_get.wav"),
             ("explosion", "assets/sfx/explosion.wav"),
+            ("menu_confirm", "assets/sfx/menu_confirm.wav"),
+            ("menu_select", "assets/sfx/menu_select.wav"),
+            ("player_death", "assets/sfx/player_death.wav"),
         ]
         
         for name, path in sfx_list:

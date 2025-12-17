@@ -55,6 +55,9 @@ def player_damage_system(
     if dmg.deathbomb_timer <= 0.0:
         dmg.pending_death = False
         life.lives -= 1
+        
+        # 播放死亡音效
+        state.sfx_requests.append("player_death")
 
         if life.lives > 0:
             # 掉命后进入无敌状态
