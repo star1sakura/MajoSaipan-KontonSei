@@ -38,6 +38,7 @@ from model.systems.motion_program_system import motion_program_system
 from model.systems.homing_bullet_system import homing_bullet_system
 from model.systems.laser_collision_system import laser_collision_system
 from model.systems.laser_motion_system import laser_motion_system
+from model.systems.vfx_system import vfx_system
 from model.stages.stage1 import setup_stage1
 from model.enemies import spawn_fairy_small, spawn_fairy_large, spawn_midboss
 from model.scripting.archetype import register_default_archetypes
@@ -244,6 +245,7 @@ class GameController:
 
         # 6. 渲染前更新 HUD 和统计数据
         render_hint_system(self.state)
+        vfx_system(self.state, dt) # Run Animation updates
         boss_hud_system(self.state, dt)  # Boss HUD 数据聚合更新
         hud_data_system(self.state)
         stats_system(self.state)

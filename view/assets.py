@@ -659,6 +659,31 @@ class Assets:
         except (FileNotFoundError, pygame.error) as e:
            print(f"Failed to load VFX {path}: {e}")
 
+        # Explosion
+        # 1 Row * 8 Cols = 8 Frames total.
+        path = "assets/sprites/vfx/explosion.png"
+        try:
+           sheet = pygame.image.load(path).convert_alpha()
+           sw, sh = sheet.get_size()
+           cols = 8
+           frame_w = sw // cols
+           frame_h = sh
+           
+           frames = []
+           target_size = (64, 64) # User requested smaller size
+           for c in range(cols):
+               rect = pygame.Rect(c*frame_w, 0, frame_w, frame_h)
+               surface = sheet.subsurface(rect)
+               scaled = pygame.transform.smoothscale(surface, target_size)
+               frames.append(scaled)
+               # Register for SpriteInfo access
+               self.images[f"explosion_{c}"] = scaled
+           
+           self.vfx["explosion"] = frames
+           print(f"Loaded VFX: {path} -> {len(frames)} frames (Scaled to {target_size})")
+        except (FileNotFoundError, pygame.error) as e:
+           print(f"Failed to load VFX {path}: {e}")
+
         # Boss Cut-in
         try:
             # Try PNG first
@@ -730,6 +755,7 @@ class Assets:
             ("enemy_damage", "assets/sfx/enemy_damage.wav"),
             ("pause", "assets/sfx/pause.wav"),
             ("item_get", "assets/sfx/item_get.wav"),
+            ("explosion", "assets/sfx/explosion.wav"),
         ]
         
         for name, path in sfx_list:
@@ -739,6 +765,8 @@ class Assets:
                     sound.set_volume(0.05)
                 elif name == "item_get":
                     sound.set_volume(0.1)
+                elif name == "explosion":
+                    sound.set_volume(0.15) # Slightly lower than default 0.2
                 else:
                     sound.set_volume(0.2)
                 self.sfx[name] = sound

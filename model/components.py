@@ -59,6 +59,24 @@ class Collider:
 
 
 @dataclass
+class VfxTag:
+    """Tag for VFX entities."""
+    pass
+
+
+@dataclass
+class Animation:
+    """Simple animation component."""
+    base_name: str
+    total_frames: int
+    duration: float  # Seconds per frame
+    timer: float = 0.0
+    current_frame: int = 0
+    loop: bool = False
+    auto_remove: bool = True
+
+
+@dataclass
 class Health:
     max_hp: int
     hp: int
