@@ -1340,7 +1340,7 @@ def phase3_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
         )
         
         wave += 1
-        yield 120
+        yield 240  # 发射频率降为原来的一半
 
 
 def phase4_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
@@ -1523,10 +1523,9 @@ def phase5_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
     移动路径循环执行：
     步骤1: 左侧飞向右上（2条平行线）
     步骤2: 右侧飞向左上（3条平行线）
-    → 发射五角星
     步骤3: 左侧飞向右上（3条平行线）
     步骤4: 右侧飞向左上（2条平行线）
-    → 发射五角星
+    → 完成一个完整循环后发射五角星
     """
     from model.components import BossAuraState
     
@@ -1598,9 +1597,6 @@ def phase5_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
             fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
         )
 
-        # ★ 完成步骤1(左→右) + 步骤2(右→左)，发射五角星
-        yield from _fire_pentagrams_at_boss(ctx)
-
         # ===== 步骤3: 左侧飞向右上（3条平行线）=====
         yield from _fly_and_fire_phase5(
             ctx,
@@ -1640,7 +1636,7 @@ def phase5_spellcard(ctx: "TaskContext") -> Generator[int, None, None]:
             fan_count=FAN_COUNT, fan_spread=FAN_SPREAD, layer_speeds=LAYER_SPEEDS,
         )
 
-        # ★ 完成步骤3(左→右) + 步骤4(右→左)，发射五角星
+        # ★ 完成一个完整循环（步骤1-4），发射五角星
         yield from _fire_pentagrams_at_boss(ctx)
 
 

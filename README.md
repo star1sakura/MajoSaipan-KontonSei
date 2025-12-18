@@ -5,11 +5,14 @@
 ## 特性
 
 - 完整的 MVC + ECS 架构设计
-- 可选角色系统（博丽灵梦 / 雾雨魔理沙）
+- 可选角色系统（樱羽艾玛 / 二阶堂希罗）
+- Task 协程脚本系统（LuaSTG 风格 `yield N` 语义）
 - 丰富的弹幕模式（自机狙、N-WAY、环形、螺旋等）
+- 激光系统（直线、正弦波、反射）
+- 子机系统（动态位置、多种射击模式）
 - Boss 战系统（多阶段、符卡、奖励机制）
-- 东方风格的游戏机制（擦弹、PoC、死亡炸弹）
-- 使用注册表模式实现高度可扩展性
+- 东方风格的游戏机制（擦弹、擦弹能量/增强状态、PoC、死亡炸弹）
+- 使用注册表模式实现高度可扩展性（12 个注册表）
 
 ## 运行
 
@@ -42,68 +45,158 @@ python main.py -c MARISA_A
 ├── main.py                        # 入口，角色选择
 ├── requirements.txt
 │
+├── assets/                        # 游戏资源
+│   ├── bgm/                       # 背景音乐
+│   ├── fonts/                     # 字体
+│   ├── sfx/                       # 音效
+│   └── sprites/                   # 精灵图
+│       ├── backgrounds/           # 背景
+│       ├── bullets/               # 子弹
+│       ├── characters/            # 角色
+│       ├── enemies/               # 敌人
+│       ├── items/                 # 道具
+│       ├── options/               # 子机
+│       ├── vfx/                   # 特效
+│       └── ui/                    # 界面
+│
 ├── controller/
 │   └── game_controller.py         # 主循环，系统调用顺序
 │
 ├── model/                         # 逻辑层（ECS 核心）
 │   ├── actor.py                   # Actor 容器（add/get/has）
-│   ├── components.py              # 所有组件定义（50+）
+│   ├── components.py              # 所有组件定义（114+）
 │   ├── game_state.py              # 世界状态 + 工厂函数
 │   ├── game_config.py             # 配置类（CollectConfig, GrazeConfig 等）
 │   ├── collision_events.py        # 碰撞事件类型
 │   ├── registry.py                # 通用注册表基础设施
 │   ├── bullet_patterns.py         # 弹幕模式系统（5 种）
-│   ├── bomb_handlers.py           # 炸弹类型处理器（2 种）
-│   ├── shot_handlers.py           # 射击类型处理器（2 种）
+│   ├── bomb_handlers.py           # 炸弹类型处理器（3 种：CIRCLE/BEAM/CONVERT）
+│   ├── shot_handlers.py           # 射击类型处理器
 │   ├── item_effects.py            # 道具效果系统（4 种）
 │   ├── movement_path.py           # 敌人移动路径库
 │   ├── enemies.py                 # 敌人工厂（小妖精/大妖精/中Boss）
 │   ├── stage.py                   # 关卡事件定义
+│   ├── option_shot_handlers.py    # 子机射击处理器
+│   ├── player_shot_patterns.py    # 玩家射击模式
 │   │
 │   ├── character/                 # 角色预设系统
 │   │   └── __init__.py            # CharacterId, CharacterPreset
 │   │
 │   ├── bosses/                    # Boss 工厂
 │   │   ├── __init__.py
-│   │   └── stage1_boss.py         # Stage 1 Boss: 妖精大王
+│   │   └── stage1_boss.py         # Stage 1 Boss
+│   │
+│   ├── scripting/                 # 协程脚本系统
+│   │   ├── __init__.py
+│   │   ├── task.py                # Task / TaskRunner 协程容器
+│   │   ├── context.py             # TaskContext 引擎原语接口
+│   │   ├── archetype.py           # BulletArchetype 子弹原型
+│   │   ├── motion.py              # MotionProgram 运动指令
+│   │   ├── patterns.py            # 弹幕模式辅助函数
+│   │   ├── behaviors.py           # 敌人行为脚本
+│   │   └── stage_runner.py        # 关卡脚本执行器
 │   │
 │   ├── stages/                    # 关卡脚本
 │   │   └── stage1.py              # 第一关时间表
 │   │
-│   └── systems/                   # 逻辑系统（26 个）
+│   └── systems/                   # 逻辑系统（30+）
 │       ├── player_movement.py     # 玩家移动
 │       ├── player_shoot.py        # 玩家射击
-│       ├── enemy_shoot.py         # 敌人射击
+│       ├── option_system.py       # 子机系统
 │       ├── movement.py            # 通用移动 + 路径跟随
 │       ├── collision.py           # 碰撞检测
 │       ├── collision_damage_system.py  # 伤害结算
 │       ├── bomb_hit_system.py     # 炸弹命中
 │       ├── bomb_system.py         # 炸弹激活
 │       ├── graze_system.py        # 擦弹系统
+│       ├── graze_energy_system.py # 擦弹能量系统
 │       ├── item_pickup.py         # 道具拾取
 │       ├── item_autocollect.py    # 道具自动吸取
 │       ├── player_damage.py       # 玩家受伤/死亡炸
 │       ├── enemy_death.py         # 敌人死亡 + 掉落
-│       ├── boss_phase_system.py   # Boss 阶段管理
-│       ├── boss_movement_system.py # Boss 移动
 │       ├── boss_hud_system.py     # Boss HUD 数据聚合
-│       ├── task_system.py         # Task 协程系统（关卡/敌人行为脚本）
+│       ├── task_system.py         # Task 协程系统
 │       ├── motion_program_system.py # 子弹运动指令系统
+│       ├── homing_bullet_system.py # 追踪子弹系统
+│       ├── laser_collision_system.py # 激光碰撞检测
+│       ├── laser_motion_system.py # 激光运动更新
 │       ├── poc_system.py          # PoC 状态计算
 │       ├── gravity.py             # 重力系统
 │       ├── lifetime.py            # 生命周期清理
 │       ├── boundary_system.py     # 边界处理
 │       ├── death_effect.py        # 死亡效果（清弹/重生）
+│       ├── vfx_system.py          # 动画/特效系统
 │       ├── render_hint_system.py  # 渲染提示
 │       ├── hud_data_system.py     # HUD 数据聚合
 │       └── stats_system.py        # 实体统计
 │
 └── view/                          # 渲染层
-    ├── assets.py                  # 资源加载（占位图形）
-    └── renderer.py                # 渲染器 + HUD + Boss HUD
+    ├── assets.py                  # 资源加载
+    ├── renderer.py                # 主渲染器 + HUD
+    ├── boss_renderer.py           # Boss 动画渲染
+    ├── enemy_renderer.py          # 敌人动画渲染
+    ├── pause_renderer.py          # 暂停菜单渲染
+    └── main_menu.py               # 主菜单
 ```
 
 ## 核心架构
+
+### MVC + ECS 混合架构
+
+项目采用 **MVC（Model-View-Controller）** 与 **ECS（Entity-Component-System）** 的混合架构：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Controller (controller/)                                   │
+│  └─ game_controller.py: 主循环、输入处理、系统调度         │
+├─────────────────────────────────────────────────────────────┤
+│  Model (model/)                          ← ECS 核心         │
+│  ├─ Actor: 实体容器 (add/get/has)                          │
+│  ├─ Component: 纯数据 (components.py, 114+ 组件)           │
+│  ├─ System: 纯逻辑 (systems/, 30+ 系统)                    │
+│  ├─ GameState: 世界状态 + 工厂函数                         │
+│  ├─ Registry: 装饰器注册表模式 (12 个)                      │
+│  └─ Scripting: 协程脚本系统 (LuaSTG 风格)                  │
+├─────────────────────────────────────────────────────────────┤
+│  View (view/)                                               │
+│  └─ renderer.py, boss_renderer.py, enemy_renderer.py: 渲染  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 脚本系统架构
+
+脚本系统采用三层架构设计，位于 `model/scripting/`：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  脚本层 (Script Layer)                                      │
+│  ├─ stages/stage1.py: 关卡脚本                             │
+│  ├─ behaviors.py: 敌人行为脚本                              │
+│  └─ bosses/stage1_boss.py: Boss 弹幕脚本                   │
+│      └─ 使用 yield N 语义编写游戏逻辑                       │
+├─────────────────────────────────────────────────────────────┤
+│  原语层 (Primitives Layer) - context.py                    │
+│  ├─ TaskContext: 脚本 API 接口                              │
+│  │   ├─ fire() / fire_aimed() / fire_laser(): 发射弹幕     │
+│  │   ├─ spawn_enemy() / spawn_boss(): 生成实体             │
+│  │   ├─ run_phase() / run_spell_card(): Boss 阶段管理      │
+│  │   └─ move_to() / wait_for_phase_end(): 控制流           │
+│  ├─ BulletArchetype: 子弹原型定义 (archetype.py)           │
+│  ├─ MotionProgram: 子弹运动指令 (motion.py)                │
+│  └─ patterns.py: 弹幕模式辅助函数 (fire_ring, fire_fan)    │
+├─────────────────────────────────────────────────────────────┤
+│  底层系统 (Runtime Layer)                                   │
+│  ├─ Task / TaskRunner: 协程容器 (task.py)                  │
+│  ├─ task_system.py: 协程调度执行                           │
+│  ├─ motion_program_system.py: 运动指令执行                 │
+│  └─ StageRunner: 关卡脚本执行器 (stage_runner.py)          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**数据流向**：
+```
+脚本 (yield N) → TaskRunner → task_system → 原语调用 → 底层系统/ECS
+```
 
 ### ECS 模式
 
@@ -126,26 +219,28 @@ System（系统）
 ```
 输入轮询 → 写入 InputState 组件
     ↓
+task_system                 # Task 协程系统（关卡/敌人行为脚本）
 player_move_system          # 玩家移动
+option_system               # 子机位置更新
 player_shoot_system         # 玩家射击
-enemy_shoot_system          # 敌人射击
     ↓
 poc_system                  # PoC 状态计算
 gravity_system              # 重力
 item_autocollect_system     # 道具自动吸取
     ↓
-task_system                 # Task 协程系统（关卡/敌人行为脚本）
 motion_program_system       # 子弹运动指令系统
-boss_movement_system        # Boss 移动
+homing_bullet_system        # 追踪子弹系统
 movement_system             # 通用位移更新
 boundary_system             # 边界处理
 lifetime_system             # 生命周期清理
     ↓
 collision_detection_system  # 碰撞检测 → 写入 CollisionEvents
-boss_phase_system           # Boss 阶段管理
+laser_collision_system      # 激光碰撞检测
+laser_motion_system         # 激光运动更新
 collision_damage_system     # 伤害结算
 bomb_hit_system             # 炸弹命中
 graze_system                # 擦弹
+graze_energy_system         # 擦弹能量累积
 item_pickup_system          # 道具拾取
     ↓
 player_damage_system        # 玩家受伤/死亡炸判断
@@ -154,6 +249,7 @@ enemy_death_system          # 敌人死亡 + 掉落
 player_respawn_visual_system # 重生闪烁
     ↓
 render_hint_system          # 渲染提示
+vfx_system                  # 动画/特效更新
 boss_hud_system             # Boss HUD 聚合
 hud_data_system             # 玩家 HUD 聚合
 stats_system                # 实体统计
@@ -185,11 +281,11 @@ renderer.render()           # 渲染
 | `PlayerPower` | 火力值 |
 | `PlayerScore` | 分数 |
 | `PlayerGraze` | 擦弹计数 |
+| `GrazeEnergy` | 擦弹能量（增强状态） |
 | `PlayerDamageState` | 受伤/无敌/死亡炸状态 |
 | `PlayerRespawnState` | 重生闪烁状态 |
-| `ShotConfig` | 射击配置 |
+| `PlayerShotPattern` | 射击模式配置 |
 | `BombConfigData` | 炸弹配置 |
-| `Shooting` | 射击冷却 |
 
 ### 敌人
 | 组件 | 说明 |
@@ -215,12 +311,35 @@ renderer.render()           # 渲染
 | 组件 | 说明 |
 |------|------|
 | `Bullet` | 子弹伤害 |
+| `HomingBullet` | 追踪子弹（转向率、速度） |
 | `BulletGrazeState` | 是否已被擦过 |
+| `BulletBounce` | 子弹反弹（最大次数、当前次数） |
 | `PlayerBulletTag` | 玩家子弹标记 |
 | `EnemyBulletTag` | 敌弹标记 |
 | `BombFieldTag` | 炸弹场标记 |
 | `Item` | 道具类型 + 数值 |
 | `ItemTag` | 道具标记 |
+
+### 激光
+| 组件 | 说明 |
+|------|------|
+| `LaserState` | 激光状态（类型、宽度、长度、角度、反射等） |
+| `LaserTag` | 激光标记 |
+
+### 子机
+| 组件 | 说明 |
+|------|------|
+| `OptionConfig` | 子机配置（数量、伤害、射击模式） |
+| `OptionState` | 子机运行状态（当前位置列表） |
+| `OptionTag` | 子机标记（槽位索引） |
+
+### 动画 / 特效
+| 组件 | 说明 |
+|------|------|
+| `Animation` | 帧动画组件（帧数、时长、循环） |
+| `VfxTag` | 特效标记 |
+| `BossAttackAnimation` | Boss 攻击动画状态 |
+| `BossAuraState` | Boss 光环状态 |
 
 ### HUD / 渲染
 | 组件 | 说明 |
@@ -271,6 +390,9 @@ class CollisionLayer(IntFlag):
 | `character_registry` | 角色预设 |
 | `wave_pattern_registry` | 波次模式处理器 |
 | `path_handler_registry` | 路径处理器 |
+| `bullet_archetype_registry` | 子弹原型定义 |
+| `option_shot_registry` | 子机射击处理器 |
+| `player_shot_pattern_registry` | 玩家射击模式 |
 
 **使用示例**：
 ```python
@@ -293,10 +415,18 @@ def spawn_fairy_small(state, x, y, hp=5) -> Actor:
 
 | 角色 | 特点 |
 |------|------|
-| 博丽灵梦 A | 广角扩散弹 + 圆形炸弹 |
-| 雾雨魔理沙 A | 窄角高伤直射 + 光束炸弹 |
+| 樱羽艾玛（REIMU_A） | 直射弹 + CONVERT 炸弹（将敌弹转为追踪弹）+ 灵梦式子机 |
+| 二阶堂希罗（MARISA_A） | 扩散弹 + BEAM 光束炸弹 + 魔理沙式子机 |
 
-角色预设包含：移动速度、碰撞半径、射击配置、炸弹配置、初始残机/炸弹等。
+角色预设包含：移动速度、碰撞半径、射击模式配置、炸弹配置、子机配置、初始残机/炸弹等。
+
+## 炸弹类型
+
+| 类型 | 说明 |
+|------|------|
+| `CIRCLE` | 圆形炸弹场，以玩家为中心 |
+| `BEAM` | 垂直光束（多段），向上发射 |
+| `CONVERT` | 无敌结束后将所有敌弹转换为追踪玩家子弹 |
 
 ## Boss 系统
 
@@ -355,6 +485,105 @@ def spawn_fairy_small(state, x, y, hp=5) -> Actor:
 - 满 Power（可配置）
 - 使用炸弹时
 
+## 激光系统
+
+| 激光类型 | 说明 |
+|----------|------|
+| `STRAIGHT` | 直线激光 |
+| `SINE_WAVE` | 正弦波形激光 |
+
+**激光特性**：
+- 预热阶段（warmup）：激光变宽前的准备期
+- 旋转：支持角速度旋转
+- 反射：碰到边界可反射
+- 线段碰撞检测：使用点到线段距离判断命中
+
+## 子机系统
+
+子机（Option）是跟随玩家的副武器单位。
+
+| 射击模式 | 说明 |
+|----------|------|
+| `REIMU_STYLE` | 普通：直射，低速：追踪 |
+| `MARISA_STYLE` | 普通：扩散，低速：直射 |
+| `STRAIGHT` | 始终直射 |
+| `HOMING` | 始终追踪 |
+| `SPREAD` | 始终扇形 |
+
+**子机特性**：
+- 动态位置：普通/低速模式下位置不同
+- Power 联动：根据火力值决定子机数量
+- 平滑过渡：位置切换时有插值动画
+
+## 擦弹能量系统
+
+擦弹不仅加分，还会积累能量：
+
+- **能量积累**：每次擦弹 +5 能量（可配置）
+- **增强状态**：能量满（100）时自动触发
+- **增强效果**：火力增强、射击模式变化
+- **能量消耗**：增强状态下能量持续消耗
+- **能量衰减**：停止擦弹后能量会缓慢衰减
+
+## 协程脚本系统
+
+基于 Python 生成器的协程系统，位于 `model/scripting/`，提供 LuaSTG 风格的脚本能力。
+
+### yield N 语义
+
+- `yield 1` = 等待 1 帧，下一帧继续
+- `yield 60` = 等待 60 帧（约 1 秒）
+
+### 核心组件
+
+| 组件 | 说明 |
+|------|------|
+| `Task` | 单个协程任务 |
+| `TaskRunner` | 协程执行器组件 |
+| `TaskContext` | 引擎原语接口 |
+| `BulletArchetype` | 子弹原型系统 |
+| `MotionProgram` | 子弹运动指令 |
+
+### TaskContext 主要方法
+
+```python
+# 发射子弹
+ctx.fire(x, y, speed, angle, archetype="basic")
+ctx.fire_aimed(x, y, speed, archetype="basic")  # 自机狙
+
+# 发射激光
+ctx.fire_laser(x, y, angle, width, length, laser_type=LaserType.STRAIGHT)
+
+# 生成敌人/Boss
+ctx.spawn_enemy(kind, x, y, hp=10, behavior=None)
+ctx.spawn_boss(boss_id, x, y)
+
+# Boss 阶段管理
+ctx.run_phase(pattern, timeout, hp)
+ctx.run_spell_card(name, bonus, pattern, timeout, hp)
+
+# 移动
+ctx.move_to(x, y, frames)  # 平滑移动
+ctx.move_to_player_x(y, frames)  # 移动到玩家 X 坐标
+
+# 等待
+ctx.wait_for_phase_end()
+ctx.enemies_alive()  # 获取存活敌人数
+```
+
+### MotionProgram 指令
+
+子弹运动指令系统，可实现复杂弹道：
+
+| 指令 | 说明 |
+|------|------|
+| `Wait(frames)` | 等待帧数 |
+| `SetSpeed(speed)` | 设置速度 |
+| `SetAngle(angle)` | 设置角度 |
+| `AccelerateTo(speed, frames)` | 加速到目标速度 |
+| `TurnTo(angle, frames)` | 转向到目标角度 |
+| `AimPlayer()` | 转向玩家 |
+
 ## 扩展指南
 
 ### 添加新角色
@@ -369,10 +598,51 @@ def _new_char() -> CharacterPreset:
         description="角色描述",
         speed_normal=220.0,
         speed_focus=120.0,
-        shot=ShotConfig(...),
-        bomb=BombConfigData(...),
+        shot_pattern=PlayerShotPatternConfig(
+            kind=PlayerShotPatternKind.SPREAD,
+            cooldown=0.08,
+            bullet_speed=520.0,
+            ...
+        ),
+        bomb=BombConfigData(bomb_type=BombType.CIRCLE, ...),
+        option=OptionConfig(
+            option_shot_kind=OptionShotKind.REIMU_STYLE,
+            max_options=4,
+            ...
+        ),
         ...
     )
+```
+
+### 添加新子弹原型
+
+在 `model/scripting/archetype.py` 中：
+
+```python
+register_archetype(BulletArchetype(
+    id="my_bullet",
+    damage=2,
+    sprite="my_sprite",
+    radius=6.0,
+    lifetime=30.0,
+))
+
+# 使用
+ctx.fire(x, y, speed, angle, archetype="my_bullet")
+```
+
+### 添加新子机射击模式
+
+在 `model/option_shot_handlers.py` 中：
+
+```python
+@option_shot_registry.register(OptionShotKind.NEW_STYLE)
+def _option_shot_new(speed: float, is_focusing: bool, target_angle: float) -> List[ShotData]:
+    # 返回射击数据列表
+    if is_focusing:
+        return [ShotData(velocity=..., offset=...)]
+    else:
+        return [ShotData(...), ShotData(...)]
 ```
 
 ### 添加新弹幕模式
