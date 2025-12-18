@@ -39,6 +39,7 @@ from model.systems.homing_bullet_system import homing_bullet_system
 from model.systems.laser_collision_system import laser_collision_system
 from model.systems.laser_motion_system import laser_motion_system
 from model.systems.vfx_system import vfx_system
+from model.systems.shockwave_system import shockwave_system
 from model.stages.stage1 import setup_stage1
 from model.enemies import spawn_fairy_small, spawn_fairy_large, spawn_midboss
 from model.scripting.archetype import register_default_archetypes
@@ -246,6 +247,7 @@ class GameController:
         # 6. 渲染前更新 HUD 和统计数据
         render_hint_system(self.state)
         vfx_system(self.state, dt) # Run Animation updates
+        shockwave_system(self.state, dt) # Run Shockwave updates
         boss_hud_system(self.state, dt)  # Boss HUD 数据聚合更新
         hud_data_system(self.state)
         stats_system(self.state)
@@ -338,6 +340,51 @@ class GameController:
             if self.state.cutin.active:
                 self._update_cutin(real_dt)
                 self.accumulator = 0.0 # Don't accumulate game logic time
+                self.renderer.render(self.state, flip=True)
+                continue
+
+            # ==========================
+            # Dialogue Logic
+            # ==========================
+            if self.state.dialogue.active:
+                dialogue = self.state.dialogue
+                
+                if dialogue.closing:
+                    # Closing Phase (Just Fade Out)
+                    dialogue.timer -= real_dt
+                    
+                    # Logic: Fade over 1.0 second.
+                    if dialogue.timer > 0:
+                        dialogue.alpha = int(255 * dialogue.timer)
+                    else:
+                        dialogue.alpha = 0
+                        
+                    if dialogue.timer <= 0:
+                        dialogue.active = False
+                        dialogue.finished = True
+                        dialogue.closing = False
+                else:
+                    # Active Reading Phase
+                    # Ensure current line variant is applied
+                    if dialogue.current_index < len(dialogue.lines):
+                        line = dialogue.lines[dialogue.current_index]
+                        if line.variant:
+                            dialogue.variants[line.speaker] = line.variant
+
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            self.running = False
+                            self.quit_requested = True
+                        elif event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_z or event.key == pygame.K_RETURN:
+                                 # Advance
+                                 dialogue.current_index += 1
+                                 if dialogue.current_index >= len(dialogue.lines):
+                                     dialogue.closing = True
+                                     dialogue.timer = 1.0 # 1s fade out (no wait)
+                                     dialogue.alpha = 255
+                
+                self.accumulator = 0.0
                 self.renderer.render(self.state, flip=True)
                 continue
 

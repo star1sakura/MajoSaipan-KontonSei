@@ -18,6 +18,7 @@ class Assets:
         self.vfx: dict[str, list[pygame.Surface]] = {}
         self.sfx: dict[str, pygame.mixer.Sound] = {}
         self.font_path = "assets/fonts/OPPOSans-Bold.ttf"
+        self.fonts: dict[int, pygame.font.Font] = {}
 
     def load(self) -> None:
         # Load Character Sprite Sheet
@@ -449,6 +450,7 @@ class Assets:
 
         self._load_enemy_sprites()
         self._load_boss_sprites()
+        self._load_portraits()
         self._load_items()
         self._load_bullets()
         self._load_vfx()
@@ -567,6 +569,127 @@ class Assets:
             
         except (FileNotFoundError, pygame.error) as e:
             print(f"Failed to load enemy sprite {path}: {e}")
+
+            self.enemy_sprites["enemy_fairy_large"] = {
+                "idle": frames_idle,
+                "start_move": frames_start,
+                "loop_move": frames_loop
+            }
+            print(f"Loaded enemy sprite: {path} ({sw}x{sh}) -> Frame {frame_w}x{frame_h}")
+            
+        except (FileNotFoundError, pygame.error) as e:
+            print(f"Failed to load enemy sprite {path}: {e}")
+
+    def _load_portraits(self) -> None:
+        """Load dialogue portraits."""
+        # Player (Ema)
+        path = "assets/sprites/portraits/ema.png"
+        target_h = 400
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            # Scale to fixed height
+            if img.get_height() != target_h:
+                scale = target_h / img.get_height()
+                new_w = int(img.get_width() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, target_h))
+                
+            self.images["portrait_player"] = img
+            print(f"Loaded portrait: {path}")
+        except (FileNotFoundError, pygame.error):
+            print(f"Failed to load portrait {path}")
+            # Placeholder
+            s = pygame.Surface((300, 400), pygame.SRCALPHA)
+            pygame.draw.rect(s, (255, 100, 100), (50, 50, 200, 300))
+            self.images["portrait_player"] = s
+
+        # Player Variation (Ema 2)
+        path = "assets/sprites/portraits/ema_2.png"
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            if img.get_height() != target_h:
+                scale = target_h / img.get_height()
+                new_w = int(img.get_width() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, target_h))
+            self.images["portrait_player_2"] = img
+        except (FileNotFoundError, pygame.error):
+            # No placeholder needed, renderer will fallback to default if missing
+            pass
+
+        # Boss (Yuki)
+        path = "assets/sprites/portraits/yuki.png"
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            # Scale to fixed height
+            if img.get_height() != target_h:
+                scale = target_h / img.get_height()
+                new_w = int(img.get_width() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, target_h))
+                
+            self.images["portrait_boss"] = img
+            print(f"Loaded portrait: {path}")
+        except (FileNotFoundError, pygame.error):
+            print(f"Failed to load portrait {path}")
+            s = pygame.Surface((300, 400), pygame.SRCALPHA)
+            pygame.draw.rect(s, (100, 100, 255), (50, 50, 200, 300))
+            self.images["portrait_boss"] = s
+            
+        # Boss Variation (Yuki 2)
+        path = "assets/sprites/portraits/yuki_2.png"
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            if img.get_height() != target_h:
+                scale = target_h / img.get_height()
+                new_w = int(img.get_width() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, target_h))
+            self.images["portrait_boss_2"] = img
+        except (FileNotFoundError, pygame.error):
+            pass
+
+        # Boss Variation (Yuki 3)
+        path = "assets/sprites/portraits/yuki_3.png"
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            if img.get_height() != target_h:
+                scale = target_h / img.get_height()
+                new_w = int(img.get_width() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, target_h))
+            self.images["portrait_boss_3"] = img
+        except (FileNotFoundError, pygame.error):
+            pass
+
+        # Boss Variation (Yuki 4)
+        path = "assets/sprites/portraits/yuki_4.png"
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            if img.get_height() != target_h:
+                scale = target_h / img.get_height()
+                new_w = int(img.get_width() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, target_h))
+            self.images["portrait_boss_4"] = img
+        except (FileNotFoundError, pygame.error):
+            pass
+
+        # Names
+        target_name_h = 90
+        try:
+            img = pygame.image.load("assets/ui/name_ema.png").convert_alpha()
+            if img.get_height() != target_name_h:
+                scale = target_name_h / img.get_height()
+                new_w = int(img.get_width() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, target_name_h))
+            self.images["name_ema"] = img
+        except (FileNotFoundError, pygame.error):
+            pass
+            
+        try:
+            img = pygame.image.load("assets/ui/name_yuki.png").convert_alpha()
+            if img.get_height() != target_name_h:
+                scale = target_name_h / img.get_height()
+                new_w = int(img.get_width() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, target_name_h))
+            self.images["name_yuki"] = img
+        except (FileNotFoundError, pygame.error):
+            pass
 
     def _load_boss_sprites(self) -> None:
         """Load and slice boss sprites."""
@@ -740,12 +863,24 @@ class Assets:
             pygame.draw.rect(s, (255, 255, 255), (0, 0, 480, 200), 5)
             self.images["boss_cutin"] = s
 
+        # Sakura (Player Invincibility) - Single image
+        path = "assets/sprites/vfx/sakura.png"
+        try:
+           img = pygame.image.load(path).convert_alpha()
+           # Scale to target size
+           target_size = (120, 120)
+           scaled = pygame.transform.smoothscale(img, target_size)
+           self.images["sakura"] = scaled
+           print(f"Loaded VFX: {path} -> Scaled to {target_size}")
+        except (FileNotFoundError, pygame.error) as e:
+           print(f"Failed to load VFX {path}: {e}")
+
     def _load_items(self) -> None:
         """Load item sprites."""
         # Item definitions: (name, filename, target_size)
         items = [
             ("item_exp_small", "assets/sprites/items/item_exp_small.png", (24, 24)),
-            ("item_exp_large", "assets/sprites/items/item_exp_large.png", (32, 32)),
+            ("item_exp_large", "assets/sprites/items/item_exp_large.png", (24, 24)),
         ]
         
         for name, path, size in items:
@@ -767,7 +902,7 @@ class Assets:
         """Load additional bullet sprites."""
         # Boss Bullets
         bullets = [
-            ("boss_bullet_blue", "assets/sprites/bullets/boss_bullet_small.png", (20, 20)),
+            ("boss_bullet_blue", "assets/sprites/bullets/boss_bullet_small.png", (14, 14)),
             ("boss_bullet_red", "assets/sprites/bullets/boss_bullet_large.png", (20, 20)),
         ]
         
@@ -792,6 +927,9 @@ class Assets:
             ("pause", "assets/sfx/pause.wav"),
             ("item_get", "assets/sfx/item_get.wav"),
             ("explosion", "assets/sfx/explosion.wav"),
+            ("menu_confirm", "assets/sfx/menu_confirm.wav"),
+            ("menu_select", "assets/sfx/menu_select.wav"),
+            ("player_death", "assets/sfx/player_death.wav"),
         ]
         
         for name, path in sfx_list:
@@ -833,6 +971,20 @@ class Assets:
                 print(f"Failed to play music {path}: {e}")
         else:
             print(f"Music track not found: {name}")
+
+    def get_font(self, size: int) -> pygame.font.Font:
+        """Get cached font of specific size."""
+        if size in self.fonts:
+            return self.fonts[size]
+        
+        try:
+            font = pygame.font.Font(self.font_path, size)
+        except (FileNotFoundError, pygame.error):
+            # Fallback to system font
+            font = pygame.font.SysFont("arial", size)
+            
+        self.fonts[size] = font
+        return font
 
     def play_sfx(self, name: str) -> None:
         """Play sound effect by name."""

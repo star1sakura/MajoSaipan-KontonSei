@@ -447,11 +447,14 @@ class MainMenu:
             if keys[pygame.K_UP]:
                 self.selected_index = (self.selected_index - 1) % len(self.menu_items)
                 self.input_cooldown = 0.15
+                self.assets.play_sfx("menu_select")
             elif keys[pygame.K_DOWN]:
                 self.selected_index = (self.selected_index + 1) % len(self.menu_items)
                 self.input_cooldown = 0.15
+                self.assets.play_sfx("menu_select")
             elif keys[pygame.K_z] or keys[pygame.K_RETURN]:
                 self.input_cooldown = 0.2
+                self.assets.play_sfx("menu_confirm")
                 if self.selected_index == 0:
                     # 开始游戏 -> 触发转场 -> 角色选择
                     self.fade_state = "OUT"
@@ -475,13 +478,16 @@ class MainMenu:
             if keys[pygame.K_LEFT]:
                 self.character_index = (self.character_index - 1) % len(characters)
                 self.input_cooldown = 0.15
+                self.assets.play_sfx("menu_select")
             elif keys[pygame.K_RIGHT]:
                 self.character_index = (self.character_index + 1) % len(characters)
                 self.input_cooldown = 0.15
+                self.assets.play_sfx("menu_select")
             elif keys[pygame.K_z] or keys[pygame.K_RETURN]:
                 # 选中角色并开始游戏 -> 触发转场
                 self.selected_character_id = list(CharacterId)[self.character_index]
                 self.input_cooldown = 0.2
+                self.assets.play_sfx("menu_confirm")
                 self.fade_state = "OUT"
                 self.next_result = MenuResult.START_GAME
                 return MenuResult.NONE
